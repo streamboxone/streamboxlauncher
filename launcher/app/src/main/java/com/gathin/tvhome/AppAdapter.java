@@ -449,6 +449,9 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             TextView title = row.findViewById(R.id.categoryTitle);
             FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) title.getLayoutParams();
             boolean mirrored = ctx.getResources().getBoolean(R.bool.rtl_app_grid);
+            // The whole row's width: left to fit, the title would stop at its one-column cell and be cut off.
+            lp.width = inner - indent;
+            title.setGravity(mirrored ? android.view.Gravity.RIGHT : android.view.Gravity.LEFT);
             lp.gravity = android.view.Gravity.BOTTOM | (mirrored ? android.view.Gravity.RIGHT : android.view.Gravity.LEFT);
             if (mirrored) lp.rightMargin = indent;
             else lp.leftMargin = indent;
