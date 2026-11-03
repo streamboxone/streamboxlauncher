@@ -266,6 +266,9 @@
          Xiaomi offers Chinese and English only). Empty, the default, follows the TV. A theme can set it ("locale"). -->
     <string name="locale" translatable="false"></string>
 
+    <!-- The name across the top of Home. Empty shows nothing. -->
+    <string name="top_title" translatable="false">STREAMBOX</string>
+
     <!-- A name after the greeting: "Mr. Trịnh" shows GOOD MORNING, MR. TRỊNH. Empty: the greeting alone. -->
     <string name="greeting_name" translatable="false"></string>
     <!-- The greeting above the clock ("Good evening"). false hides it. Can also be set with "show_greeting" in a theme. -->
