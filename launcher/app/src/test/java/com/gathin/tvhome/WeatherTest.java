@@ -33,6 +33,18 @@ public class WeatherTest {
         assertEquals(R.string.weather_unknown, Weather.condition(1234, true));
     }
 
+    @Test public void aClearSkyIconDependsOnTheHour() {
+        assertEquals(R.drawable.ic_weather_sun, Weather.icon(0, true));
+        assertEquals(R.drawable.ic_weather_moon, Weather.icon(0, false));
+        assertEquals(R.drawable.ic_weather_partly_night, Weather.icon(2, false));
+    }
+
+    @Test public void everyKnownCodeHasAnIconAndUnknownOnesHaveNone() {
+        int[] known = {0, 1, 2, 3, 45, 48, 51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 71, 73, 75, 77, 80, 81, 82, 85, 86, 95, 96, 99};
+        for (int code : known) assertTrue("code " + code, Weather.icon(code, true) != 0);
+        assertEquals(0, Weather.icon(1234, true));
+    }
+
     @Test public void aReadingAgesOut() {
         assertTrue(Weather.fresh(100, 150, 100));
         assertFalse(Weather.fresh(100, 200, 100));

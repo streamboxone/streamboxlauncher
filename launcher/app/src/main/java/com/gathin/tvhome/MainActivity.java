@@ -554,6 +554,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (!cfg.dockTitle) hero.setVisibility(View.GONE);
         greeting = findViewById(R.id.greeting);
         internetBanner = findViewById(R.id.internetBanner);
+        findViewById(R.id.topScrim).setVisibility(cfg.wallpaperEnabled && cfg.wallpaper != null ? View.VISIBLE : View.GONE);
         weatherPanel = findViewById(R.id.weatherPanel);
         weatherNow = findViewById(R.id.weatherNow);
         weatherDetail = findViewById(R.id.weatherDetail);
@@ -2963,6 +2964,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         boolean fahrenheit = Weather.fahrenheit(this);
         weatherNow.setText(getString(R.string.weather_now, Weather.degrees(reading.tempC, fahrenheit),
                 getString(Weather.condition(reading.code, reading.day))));
+        weatherNow.setCompoundDrawablesWithIntrinsicBounds(Weather.icon(reading.code, reading.day), 0, 0, 0);
         weatherDetail.setText(getString(R.string.weather_detail, place.name,
                 Weather.degrees(reading.highC, fahrenheit), Weather.degrees(reading.lowC, fahrenheit)));
         weatherPanel.setVisibility(View.VISIBLE);

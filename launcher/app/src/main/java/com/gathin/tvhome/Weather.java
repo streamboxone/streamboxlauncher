@@ -188,6 +188,22 @@ final class Weather {
         return (int) Math.round(fahrenheit ? celsius * 9 / 5 + 32 : celsius);
     }
 
+    /** The WMO weather code as a picture; 0, no picture, for a code it doesn't know. */
+    static int icon(int code, boolean day) {
+        switch (code) {
+            case 0: case 1: return day ? R.drawable.ic_weather_sun : R.drawable.ic_weather_moon;
+            case 2: return day ? R.drawable.ic_weather_partly_day : R.drawable.ic_weather_partly_night;
+            case 3: return R.drawable.ic_weather_cloud;
+            case 45: case 48: return R.drawable.ic_weather_fog;
+            case 51: case 53: case 55: case 61: case 80: return R.drawable.ic_weather_light_rain;
+            case 63: case 65: case 81: case 82: return R.drawable.ic_weather_rain;
+            case 56: case 57: case 66: case 67: return R.drawable.ic_weather_freezing_rain;
+            case 71: case 73: case 75: case 77: case 85: case 86: return R.drawable.ic_weather_snow;
+            case 95: case 96: case 99: return R.drawable.ic_weather_storm;
+            default: return 0;
+        }
+    }
+
     /** The WMO weather code in words. */
     static int condition(int code, boolean day) {
         switch (code) {

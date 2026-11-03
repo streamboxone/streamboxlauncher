@@ -162,6 +162,16 @@
             android:visibility="gone" />
     </LinearLayout>
 
+    <!-- Behind the clock, title and pills while a picture is set, so white text reads over a bright one. -->
+    <View
+        android:id="@+id/topScrim"
+        android:layout_width="match_parent"
+        android:layout_height="190dp"
+        android:layout_gravity="top"
+        android:background="@drawable/top_scrim"
+        android:importantForAccessibility="no"
+        android:visibility="gone" />
+
     <!-- The weather under the clock (Weather, set in Launcher settings; hidden until a city is chosen). -->
     <LinearLayout
         android:id="@+id/weatherPanel"
@@ -177,6 +187,8 @@
 
         <TextView
             android:id="@+id/weatherNow"
+            android:gravity="center_vertical"
+            android:drawablePadding="8dp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:singleLine="true"
