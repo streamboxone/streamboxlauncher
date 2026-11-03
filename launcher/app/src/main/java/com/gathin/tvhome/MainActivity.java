@@ -361,6 +361,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private RecyclerView.OnScrollListener pendingFocusScroll;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
+    private static final long INTERNET_BANNER_DELAY_MS = 10_000;
+    private TextView internetBanner;
+    private boolean internetBannerPending;
+    private final Runnable showInternetBanner = () -> {
+        internetBannerPending = false;
+        internetBanner.setVisibility(View.VISIBLE);
+    };
     /** Refreshes the network pill when the connection changes: at boot Wi-Fi often connects after Home is shown. */
     private final ConnectivityManager.NetworkCallback networkCallback = new ConnectivityManager.NetworkCallback() {
         @Override
@@ -383,7 +390,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (validated && startPending != null) handler.post(openWhenOnline);
             if (validated == lastValidated) return;
             lastValidated = validated;
-            if (wifiNoInternetTint != null) handler.post(MainActivity.this::updateWifiLabel);
+            handler.post(MainActivity.this::updateWifiLabel);
         }
     };
     /** Shows the Inputs pill once the TV registers an input: at boot HDMI inputs can appear after Home is shown. */
@@ -539,6 +546,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // still follows the dock.
         if (!cfg.dockTitle) hero.setVisibility(View.GONE);
         greeting = findViewById(R.id.greeting);
+        internetBanner = findViewById(R.id.internetBanner);
         clockBlock = findViewById(R.id.leftBlock);
         clockRefresh = new ClockRefresh(clockBlock);
         greetingColor = greeting.getCurrentTextColor();
@@ -1376,6 +1384,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         super.onDestroy();
         RemoteKeys.release(this);
         cancelHoldOk();
+        handler.removeCallbacks(showInternetBanner);
         if (gameDay != null) gameDay.shutdown();
         unregisterReceiver(packageReceiver);
         if (openOnStartOnWake) unregisterReceiver(wakeReceiver);
@@ -2912,6 +2921,21 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     /** Shows the Wi-Fi network name on the button when we can read it, otherwise the connection type. */
     @SuppressWarnings("deprecation")
+    /**
+     * The banner under the title. Android's validation says the internet was really reached, so it also covers Wi-Fi
+     * that is up with a dead line behind it. It waits before appearing: at boot Wi-Fi connects after Home is shown.
+     */
+    private void setInternetBanner(boolean validated) {
+        if (validated) {
+            handler.removeCallbacks(showInternetBanner);
+            internetBannerPending = false;
+            internetBanner.setVisibility(View.GONE);
+        } else if (!internetBannerPending && internetBanner.getVisibility() != View.VISIBLE) {
+            internetBannerPending = true;
+            handler.postDelayed(showInternetBanner, INTERNET_BANNER_DELAY_MS);
+        }
+    }
+
     private void updateWifiLabel() {
         String text = getString(R.string.wifi);
         boolean vpn = false, online = false, validated = false;
@@ -2956,6 +2980,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     if (!ssid.isEmpty() && !ssid.contains("unknown") && !ssid.equals("0x")) text = ssid;
                 }
             }
+            setInternetBanner(validated);
         } catch (Exception ignored) {
         }
         // With a VPN app configured, a VPN that is down matters too: show a red "VPN off" capsule then.

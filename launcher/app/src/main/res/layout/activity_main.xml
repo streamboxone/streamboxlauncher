@@ -156,6 +156,25 @@
             android:visibility="gone" />
     </LinearLayout>
 
+    <!-- Shown when Android can't reach the internet (MainActivity.setInternetBanner). -->
+    <TextView
+        android:id="@+id/internetBanner"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginTop="50dp"
+        android:background="@drawable/bg_internet_banner"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
+        android:text="@string/internet_banner"
+        android:textColor="#FFFFFFFF"
+        android:textSize="13sp"
+        android:fontFamily="@string/font_medium"
+        android:singleLine="true"
+        android:visibility="gone" />
+
     <!-- The name across the top of Home (config.xml, top_title). -->
     <TextView
         android:layout_width="wrap_content"
