@@ -126,6 +126,7 @@ public final class LauncherSettingsActivity extends Activity {
         }
         wallpaperChoice = findViewById(R.id.wallpaperChoice);
         wallpaperChoice.setOnClickListener(v -> showWallpaperPicker());
+        findViewById(R.id.remoteButtonsChoice).setOnClickListener(v -> showRemoteButtons());
         animationsChoice = findViewById(R.id.animationsChoice);
         animationsChoice.setOnClickListener(v -> {
             animations = !animations;
@@ -304,8 +305,97 @@ public final class LauncherSettingsActivity extends Activity {
                 .show();
     }
 
-    /** Off, then every app with a TV entry point by name. Saved at once; it is read on the next boot. */
-    private void showOpenOnStartPicker() {
+    /** Add a button, then the ones already set. Works through InputKeyService, so it says when that helper is off. */
+    private void showRemoteButtons() {
+        if (!keyHelperOn()) {
+            Toast.makeText(this, R.string.remote_buttons_helper_off, Toast.LENGTH_LONG).show();
+            return;
+        }
+        List<Integer> buttons = ButtonMappings.buttons(this);
+        String[] rows = new String[buttons.size() + 1];
+        rows[0] = getString(R.string.remote_buttons_add);
+        for (int i = 0; i < buttons.size(); i++) rows[i + 1] = buttonSummary(buttons.get(i));
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.remote_buttons)
+                .setItems(rows, (dialog, which) -> {
+                    if (which == 0) captureButton();
+                    else showButton(buttons.get(which - 1));
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private boolean keyHelperOn() {
+        String on = android.provider.Settings.Secure.getString(getContentResolver(),
+                android.provider.Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+        return on != null && on.contains(getPackageName() + "/") && on.contains("InputKeyService");
+    }
+
+    private String buttonSummary(int code) {
+        return getString(R.string.remote_button_summary, ButtonMappings.name(code),
+                actionLabel(ButtonMappings.get(this, code, false)), actionLabel(ButtonMappings.get(this, code, true)));
+    }
+
+    private String actionLabel(String pkg) {
+        if (pkg == null) return getString(R.string.remote_button_unset);
+        try {
+            PackageManager pm = getPackageManager();
+            return pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString();
+        } catch (PackageManager.NameNotFoundException e) {
+            return pkg;
+        }
+    }
+
+    private void captureButton() {
+        AlertDialog prompt = new AlertDialog.Builder(this)
+                .setTitle(R.string.remote_buttons_add)
+                .setMessage(R.string.remote_buttons_press)
+                .setNegativeButton(android.R.string.cancel, null)
+                .create();
+        prompt.setOnDismissListener(d -> ButtonMappings.capture(null));
+        ButtonMappings.capture(code -> {
+            prompt.dismiss();
+            showButton(code);
+        });
+        prompt.show();
+    }
+
+    private void showButton(int code) {
+        String[] rows = {
+                getString(R.string.remote_button_tap, actionLabel(ButtonMappings.get(this, code, false))),
+                getString(R.string.remote_button_hold, actionLabel(ButtonMappings.get(this, code, true))),
+                getString(R.string.remote_button_remove)};
+        new AlertDialog.Builder(this)
+                .setTitle(ButtonMappings.name(code))
+                .setItems(rows, (dialog, which) -> {
+                    if (which == 2) {
+                        ButtonMappings.remove(this, code);
+                        showRemoteButtons();
+                    } else {
+                        pickButtonApp(code, which == 1);
+                    }
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void pickButtonApp(int code, boolean hold) {
+        List<String[]> apps = launchableApps();
+        String[] labels = new String[apps.size() + 1];
+        labels[0] = getString(R.string.remote_button_unset);
+        for (int i = 0; i < apps.size(); i++) labels[i + 1] = apps.get(i)[0];
+        new AlertDialog.Builder(this)
+                .setTitle(hold ? R.string.remote_button_hold_title : R.string.remote_button_tap_title)
+                .setItems(labels, (dialog, which) -> {
+                    ButtonMappings.set(this, code, hold, which == 0 ? null : apps.get(which - 1)[1]);
+                    showButton(code);
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    /** {label, package} for every app with a TV entry point, by name. */
+    private List<String[]> launchableApps() {
         PackageManager pm = getPackageManager();
         List<String[]> apps = new ArrayList<>();
         Intent tv = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER);
@@ -317,6 +407,12 @@ public final class LauncherSettingsActivity extends Activity {
             if (!seen) apps.add(new String[]{r.loadLabel(pm).toString(), pkg});
         }
         Collections.sort(apps, (a, b) -> a[0].compareToIgnoreCase(b[0]));
+        return apps;
+    }
+
+    /** Off, then every app with a TV entry point by name. Saved at once; it is read on the next boot. */
+    private void showOpenOnStartPicker() {
+        List<String[]> apps = launchableApps();
         String[] labels = new String[apps.size() + 1];
         labels[0] = getString(R.string.off);
         String current = choices.getString(OpenOnStart.KEY, "");

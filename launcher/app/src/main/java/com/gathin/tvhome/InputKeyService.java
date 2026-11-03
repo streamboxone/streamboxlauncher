@@ -20,6 +20,9 @@ public class InputKeyService extends AccessibilityService {
 
     private static final String ACTION_VIEW_INPUTS = "com.android.tv.action.VIEW_INPUTS";
 
+    /** A button changed in Launcher settings works from the next press. */
+    private final android.content.SharedPreferences.OnSharedPreferenceChangeListener mappingsChanged =
+            (prefs, key) -> readAppKeys(Config.load(this));
     private int[] inputKeycodes = new int[0];
     private Map<Integer, String> appKeys = Collections.emptyMap();
     private Map<Integer, String> appScancodes = Collections.emptyMap();
@@ -42,16 +45,21 @@ public class InputKeyService extends AccessibilityService {
         if (repairRecord) ServiceRepair.connected(this, getClass());
         inputKeycodes = config.inputKeycodes;
         consumeVolumeKeys = config.consumeVolumeKeys;
-        appKeys = RemoteKeys.parseAppKeys(config.appKeys);
-        appScancodes = RemoteKeys.parseAppScancodes(config.appKeys);
+        readAppKeys(config);
         RemoteKeys.applyKeyFilter(this, config.keyFilter);
-        holdAppKeys = RemoteKeys.parseHoldAppKeys(config.appKeys);
-        holdAppScancodes = RemoteKeys.parseHoldAppScancodes(config.appKeys);
+        getSharedPreferences(ButtonMappings.PREFS, MODE_PRIVATE).registerOnSharedPreferenceChangeListener(mappingsChanged);
         // gamepad_passthrough, off by default. Only with key_filter on: off, the service never filters keys.
         if (config.gamepadPassthrough && config.keyFilter && gamepads == null) {
             gamepads = new GamepadPassthrough(this);
             gamepads.start();
         }
+    }
+
+    private void readAppKeys(Config config) {
+        appKeys = RemoteKeys.parseAppKeys(config.appKeys);
+        appScancodes = RemoteKeys.parseAppScancodes(config.appKeys);
+        holdAppKeys = RemoteKeys.parseHoldAppKeys(config.appKeys);
+        holdAppScancodes = RemoteKeys.parseHoldAppScancodes(config.appKeys);
     }
 
     private boolean isInputKey(int keyCode) {
@@ -62,6 +70,7 @@ public class InputKeyService extends AccessibilityService {
 
     @Override
     protected boolean onKeyEvent(KeyEvent event) {
+        if (ButtonMappings.onKeyEvent(event)) return true;
         if (consumeVolumeKeys && VolumeKeys.handle(this, event)) return true;
         // A scancode entry is more specific than any keycode, so it goes first.
         if (RemoteKeys.handle(this, event, appScancodes.get(event.getScanCode()),
@@ -88,6 +97,7 @@ public class InputKeyService extends AccessibilityService {
 
     @Override
     public void onDestroy() {
+        getSharedPreferences(ButtonMappings.PREFS, MODE_PRIVATE).unregisterOnSharedPreferenceChangeListener(mappingsChanged);
         RemoteKeys.release(this);
         if (gamepads != null) gamepads.stop();
         if (consumeVolumeKeys) VolumeKeys.stop();

@@ -54,6 +54,17 @@
     <string name="columns_label">Apps per row</string>
     <string name="rows_below_dock_label">Rows below dock</string>
     <string name="dock_opacity_label">Dock band opacity</string>
+    <string name="remote_buttons">Remote buttons</string>
+    <string name="remote_buttons_add">Add a button</string>
+    <string name="remote_buttons_press">Press the button on your remote. D-pad, OK, Back, Home and Power can\'t be remapped.</string>
+    <string name="remote_buttons_helper_off">The remote button helper is off. Reinstall the launcher with install-launcher.sh to turn it on.</string>
+    <string name="remote_button_summary">%1$s: %2$s, held: %3$s</string>
+    <string name="remote_button_unset">Not set</string>
+    <string name="remote_button_tap">When pressed: %1$s</string>
+    <string name="remote_button_hold">When held: %1$s</string>
+    <string name="remote_button_tap_title">When pressed, open</string>
+    <string name="remote_button_hold_title">When held, open</string>
+    <string name="remote_button_remove">Remove this button</string>
     <string name="wallpaper_label">Wallpaper</string>
     <string name="wallpaper_state">Wallpaper: %1$s</string>
     <string name="wallpaper_none">None</string>
