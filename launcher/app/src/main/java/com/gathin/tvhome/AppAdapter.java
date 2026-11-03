@@ -66,7 +66,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     }
 
     static final class Entry {
-        static final int APP = 0, HOME_SETTINGS = 1, CARD = 2, EMPTY = 3;
+        static final int APP = 0, HOME_SETTINGS = 1, CARD = 2, EMPTY = 3, SECTION = 4;
 
         final int kind;
         final String label;
@@ -221,6 +221,8 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     /** Packages drawn from their icon and name even when they have a banner (config.xml icon_tiles). */
     private final Set<String> iconTiles;
     private final List<Entry> items = new ArrayList<>();
+    /** The tiles were last built in AppCategories sections, or would have been but for reorder mode. */
+    private boolean sectioned;
 
     AppAdapter(Context ctx, TileListener listener, int dockSize, Config cfg) {
         this.ctx = ctx;
@@ -341,8 +343,33 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                     null, null, null, 0));
         }
         items.clear();
-        items.addAll(fresh);
+        items.addAll(inSections(fresh));
         notifyDataSetChanged();
+    }
+
+    /**
+     * The tiles under the dock in the owner's categories. While reordering, the same order with no headings or blanks,
+     * so every position still holds a tile that can move.
+     */
+    private List<Entry> inSections(List<Entry> tiles) {
+        sectioned = false;
+        if (singleRow) return tiles;
+        int head = dockRow ? Math.min(dockSize, tiles.size()) : 0;
+        List<Entry> rest = tiles.subList(head, tiles.size());
+        List<String> categories = new ArrayList<>();
+        for (Entry e : rest) categories.add(e.kind == Entry.HOME_SETTINGS ? null : AppCategories.of(ctx, e.pkg));
+        List<AppCategories.Slot> slots = AppCategories.arrange(categories, AppCategories.names(ctx), dockSize,
+                ctx.getString(R.string.category_other));
+        if (slots == null) return tiles;
+        sectioned = true;
+        List<Entry> result = new ArrayList<>(tiles.subList(0, head));
+        for (int i = 0; i < slots.size(); i++) {
+            AppCategories.Slot slot = slots.get(i);
+            if (slot.tile >= 0) result.add(rest.get(slot.tile));
+            else if (!reordering) result.add(new Entry(Entry.SECTION, slot.title, new ComponentName(ctx, "section-slot-" + i),
+                    null, null, null, 0));
+        }
+        return result;
     }
 
     /** icon_tiles: the app's icon centred on a dark banner-shaped tile, for apps whose own banner crops badly. */
@@ -411,6 +438,23 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             });
             return new RecyclerView.ViewHolder(row) { };
         }
+        if (viewType == VIEW_SECTION) {
+            View row = LayoutInflater.from(ctx).inflate(R.layout.row_category, parent, false);
+            float density = parent.getResources().getDisplayMetrics().density;
+            int width = parent.getWidth() > 0 ? parent.getWidth() : parent.getMeasuredWidth();
+            int inner = width - parent.getPaddingLeft() - parent.getPaddingRight();
+            int tile = tileWidthPx(inner, parent.getHeight(), dockSize, rowsBelowDock, dockTitle, dockRow, density);
+            // Level with the edge of the first tile, which is centred in its cell.
+            int indent = Math.max(0, (inner / dockSize - tile) / 2);
+            TextView title = row.findViewById(R.id.categoryTitle);
+            FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) title.getLayoutParams();
+            boolean mirrored = ctx.getResources().getBoolean(R.bool.rtl_app_grid);
+            lp.gravity = android.view.Gravity.BOTTOM | (mirrored ? android.view.Gravity.RIGHT : android.view.Gravity.LEFT);
+            if (mirrored) lp.rightMargin = indent;
+            else lp.leftMargin = indent;
+            title.setLayoutParams(lp);
+            return new RecyclerView.ViewHolder(row) { };
+        }
         View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_app, parent, false);
         float density = parent.getResources().getDisplayMetrics().density;
         int width = parent.getWidth() > 0 ? parent.getWidth() : parent.getMeasuredWidth();
@@ -459,6 +503,10 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     @SuppressWarnings("deprecation")
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
         if (isLibraryAt(position)) return;
+        if (getItemViewType(position) == VIEW_SECTION) {
+            ((TextView) holder.itemView.findViewById(R.id.categoryTitle)).setText(items.get(position).label);
+            return;
+        }
         Holder h = (Holder) holder;
         Entry e = items.get(position);
         if (e.kind == Entry.EMPTY) {
@@ -571,7 +619,32 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     boolean isLibraryAt(int position) { return showLibrary && position == items.size(); }
 
-    @Override public int getItemViewType(int position) { return isLibraryAt(position) ? 1 : 0; }
+    private static final int VIEW_SECTION = 2;
+
+    @Override public int getItemViewType(int position) {
+        return isLibraryAt(position) ? 1 : items.get(position).kind == Entry.SECTION ? VIEW_SECTION : 0;
+    }
+
+    /** A heading or a blank: nothing focus can land on. */
+    boolean isSectionSlot(int position) {
+        return position >= 0 && position < items.size() && items.get(position).kind == Entry.SECTION;
+    }
+
+    /** The row above this tile is its section's heading. */
+    boolean hasHeadingAbove(int position) {
+        int above = position - position % dockSize - dockSize;
+        return isSectionSlot(above) && !items.get(above).label.isEmpty();
+    }
+
+    /** Where Up or Down goes from this tile, past headings and blanks; -1 when no row lies that way. */
+    int verticalTarget(int position, boolean down) {
+        boolean[] isTile = new boolean[items.size()];
+        for (int i = 0; i < isTile.length; i++) {
+            int kind = items.get(i).kind;
+            isTile[i] = kind != Entry.SECTION && kind != Entry.EMPTY;
+        }
+        return AppCategories.vertical(isTile, dockSize, position, down);
+    }
 
     boolean containsPackage(String pkg) {
         for (Entry entry : items) if (entry.pkg.equals(pkg)) return true;
@@ -608,6 +681,10 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         return emptySlots > 0;
     }
 
+    boolean isSectioned() {
+        return sectioned;
+    }
+
     /** Tiles that can be moved: everything but the "Default home" tile, which always stays last. */
     int movableCount() {
         int n = items.size();
@@ -619,7 +696,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         List<String> keys = new ArrayList<>();
         for (int i = 0; i < movableCount(); i++) {
             Entry e = items.get(i);
-            if (e.kind != Entry.EMPTY) keys.add(e.component.flattenToShortString());
+            if (e.kind != Entry.EMPTY && e.kind != Entry.SECTION) keys.add(e.component.flattenToShortString());
         }
         return keys;
     }
@@ -657,7 +734,9 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     /** A position focus can land on: an empty dock slot gives the last dock app. */
     int focusablePosition(int position) {
-        return DockSlots.focusable(position, docked, emptySlots);
+        int at = DockSlots.focusable(position, docked, emptySlots);
+        while (at > 0 && isSectionSlot(at)) at--;
+        return at;
     }
 
     String labelAt(int position) {

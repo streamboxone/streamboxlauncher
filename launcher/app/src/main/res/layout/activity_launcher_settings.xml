@@ -118,6 +118,12 @@
             android:layout_marginTop="28dp" />
 
         <TextView
+            android:id="@+id/categoriesChoice"
+            style="@style/SettingsRow"
+            android:layout_marginTop="28dp"
+            android:text="@string/categories_label" />
+
+        <TextView
             android:id="@+id/remoteButtonsChoice"
             style="@style/SettingsRow"
             android:layout_marginTop="28dp"

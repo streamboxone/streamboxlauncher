@@ -671,6 +671,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 if (dockRow && getPosition(child) < COLUMNS) return false;
                 int top = child.getTop() + rect.top;
                 int bottom = top + rect.height();
+                // Scrolling up into a section's first row brings its heading along.
+                if (adapter != null && adapter.hasHeadingAbove(getPosition(child))) top -= Math.round(44 * density);
                 // A row already fully on screen stays put, even inside the bottom padding (the last row
                 // rows_below_dock leaves visible ends there; nudging it up was the bug). A row that has to scroll
                 // in still stops at the padding line, clear of the screen edge, as before.
@@ -1545,7 +1547,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         dockedAtStart = adapter.dockFilled();
         for (int i = 0; i < Math.min(dockedAtStart, adapter.movableCount()); i++) dockInSession.add(adapter.keyAt(i));
         adapter.setReordering(true);
-        if (adapter.hasEmptySlots()) reloadTiles();   // every position must hold a tile that can move
+        if (adapter.hasEmptySlots() || adapter.isSectioned()) reloadTiles();   // every position must hold a tile that can move
         reordering = true;
         orderAtStart = adapter.movableKeys();
         glass.setAccent(REORDER_ACCENT);
@@ -1714,7 +1716,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 Toast.makeText(this, R.string.reorder_not_saved, Toast.LENGTH_SHORT).show();
             }
         }
-        if (fillDockLeavesSlots) reloadTiles();   // the empty dock slots left out while reordering come back
+        // The empty dock slots and the category headings left out while reordering come back.
+        if (fillDockLeavesSlots || adapter.isSectioned()) reloadTiles();
     }
 
     /**
@@ -2479,6 +2482,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 focusLibrary();
                 return true;
             }
+            // A short row above a category heading ends at its last tile.
+            if (forward && adapter.isSectionSlot(position + 1)) return true;
             // In the dock, the last app is the row's end: the empty slots after it take no focus.
             int rowCount = position < COLUMNS ? Math.min(count, adapter.dockFilled()) : count;
             return GridNavigation.atHorizontalEdge(position, rowCount, COLUMNS,
@@ -2486,14 +2491,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
             if (position < COLUMNS) return false;          // dock row: let focus move to the top bar
-            target = position - COLUMNS;
+            target = adapter.verticalTarget(position, false);
         } else {
-            int lastRowStart = ((count - 1) / COLUMNS) * COLUMNS;
-            if (position >= lastRowStart) {
+            target = adapter.verticalTarget(position, true);
+            if (target < 0) {
                 if (adapter.isLibraryAt(count)) focusLibrary();
                 return true;
             }
-            target = Math.min(position + COLUMNS, count - 1);
         }
         focusTile(target);
         // The default focus search clicks for Left/Right; Up/Down are handled here, so click for them too.
@@ -3955,6 +3959,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         });
         String label = adapter.labelAt(position);
         addSettingsMenuRow(rows, popup, R.string.tile_rename, () -> showRenameDialog(pkg, label));
+        // A dock app is in the dock wherever it would be sorted, so a category would change nothing on screen.
+        if (!(dockRow && position < COLUMNS)) addSettingsMenuRow(rows, popup, R.string.tile_category, () -> showCategoryPicker(pkg));
         if (appLibraryEnabled) addSettingsMenuRow(rows, popup, R.string.library_remove_shortcut, () -> {
             if (LibraryApps.save(this, pkg, false)) reloadApps(false);
             else Toast.makeText(this, R.string.library_save_failed, Toast.LENGTH_LONG).show();
@@ -3980,6 +3986,45 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     .setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f)).start();
         }
         rows.getChildAt(0).requestFocus();
+    }
+
+    /** Category from the tile menu: the app moves to its new section and focus goes with it. */
+    private void showCategoryPicker(String pkg) {
+        List<String> names = AppCategories.names(this);
+        String current = AppCategories.of(this, pkg);
+        boolean inOne = names.contains(current);
+        String[] rows = new String[names.size() + (inOne ? 2 : 1)];
+        for (int i = 0; i < names.size(); i++) rows[i] = names.get(i).equals(current) ? "\u2713 " + names.get(i) : names.get(i);
+        rows[names.size()] = getString(R.string.category_new);
+        if (inOne) rows[names.size() + 1] = getString(R.string.category_none);
+        boolean[] changed = {false};
+        boolean[] asking = {false};
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.tile_category)
+                .setItems(rows, (d, which) -> {
+                    if (which < names.size()) {
+                        AppCategories.assign(this, pkg, names.get(which));
+                    } else if (which == names.size()) {
+                        asking[0] = true;
+                        AppCategories.askName(this, R.string.category_new, getString(R.string.category_hint), name -> {
+                            if (AppCategories.add(this, name)) {
+                                AppCategories.assign(this, pkg, AppCategories.normalize(name));
+                                changed[0] = true;
+                            } else if (!AppCategories.normalize(name).isEmpty()) {
+                                Toast.makeText(this, R.string.category_taken, Toast.LENGTH_LONG).show();
+                            }
+                        }, () -> reloadApps(true, changed[0], false));
+                        return;
+                    } else {
+                        AppCategories.assign(this, pkg, null);
+                    }
+                    changed[0] = true;
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .setOnDismissListener(d -> {
+                    if (!asking[0]) reloadApps(true, changed[0], false);
+                })
+                .show();
     }
 
     /** Rename from the tile menu: the keyboard opens on an empty field, with the current name as its hint. */

@@ -128,6 +128,7 @@ public final class LauncherSettingsActivity extends Activity {
         wallpaperChoice = findViewById(R.id.wallpaperChoice);
         wallpaperChoice.setOnClickListener(v -> showWallpaperPicker());
         findViewById(R.id.remoteButtonsChoice).setOnClickListener(v -> showRemoteButtons());
+        findViewById(R.id.categoriesChoice).setOnClickListener(v -> showCategories());
         weatherChoice = findViewById(R.id.weatherChoice);
         weatherChoice.setOnClickListener(v -> showWeatherSettings());
         animationsChoice = findViewById(R.id.animationsChoice);
@@ -303,6 +304,55 @@ public final class LauncherSettingsActivity extends Activity {
                     image.delete();
                     changed();
                     refresh();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    /** The sections on Home; apps go into them from the tile menu. */
+    private void showCategories() {
+        List<String> names = AppCategories.names(this);
+        String[] rows = new String[names.size() + 1];
+        for (int i = 0; i < names.size(); i++) rows[i] = names.get(i);
+        rows[names.size()] = getString(R.string.category_new);
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.categories_label)
+                .setItems(rows, (dialog, which) -> {
+                    if (which < names.size()) showCategory(names.get(which));
+                    else AppCategories.askName(this, R.string.category_new, getString(R.string.category_hint), name -> {
+                        if (AppCategories.add(this, name)) changed();
+                        else if (!AppCategories.normalize(name).isEmpty()) Toast.makeText(this, R.string.category_taken, Toast.LENGTH_LONG).show();
+                    }, this::showCategories);
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void showCategory(String name) {
+        new AlertDialog.Builder(this)
+                .setTitle(name)
+                .setItems(new String[]{getString(R.string.tile_rename), getString(R.string.category_move_up),
+                        getString(R.string.category_move_down), getString(R.string.category_delete)}, (dialog, which) -> {
+                    if (which == 0) {
+                        AppCategories.askName(this, R.string.tile_rename, name, to -> {
+                            if (AppCategories.rename(this, name, to)) changed();
+                            else if (!AppCategories.normalize(to).isEmpty()) Toast.makeText(this, R.string.category_taken, Toast.LENGTH_LONG).show();
+                        }, this::showCategories);
+                    } else if (which == 3) {
+                        new AlertDialog.Builder(this)
+                                .setTitle(getString(R.string.category_delete_confirm, name))
+                                .setPositiveButton(R.string.category_delete, (d, w) -> {
+                                    AppCategories.remove(this, name);
+                                    changed();
+                                    showCategories();
+                                })
+                                .setNegativeButton(android.R.string.cancel, null)
+                                .show();
+                    } else {
+                        AppCategories.move(this, name, which == 1 ? -1 : 1);
+                        changed();
+                        showCategories();
+                    }
                 })
                 .setNegativeButton(android.R.string.cancel, null)
                 .show();

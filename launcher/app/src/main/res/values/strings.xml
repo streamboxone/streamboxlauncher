@@ -157,6 +157,17 @@
     <string name="reorder">Reorder apps</string>
     <string name="tile_move">Move</string>
     <string name="tile_rename">Rename</string>
+    <string name="tile_category">Category</string>
+    <string name="categories_label">App categories</string>
+    <string name="category_other">Other apps</string>
+    <string name="category_new">New category</string>
+    <string name="category_none">No category</string>
+    <string name="category_hint">Category name</string>
+    <string name="category_taken">There is already a category with that name.</string>
+    <string name="category_move_up">Move up</string>
+    <string name="category_move_down">Move down</string>
+    <string name="category_delete">Delete</string>
+    <string name="category_delete_confirm">Delete %1$s? Its apps stay on Home under Other apps.</string>
     <string name="tile_rename_reset">Use original name</string>
     <string name="reorder_hint">OK picks up an app, arrows move it, Back places it. Back again to finish.</string>
     <string name="reorder_not_saved">Couldn\'t save the new order</string>
