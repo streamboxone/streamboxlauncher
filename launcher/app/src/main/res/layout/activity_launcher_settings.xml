@@ -113,6 +113,11 @@
             android:layout_marginTop="28dp" />
 
         <TextView
+            android:id="@+id/weatherChoice"
+            style="@style/SettingsRow"
+            android:layout_marginTop="28dp" />
+
+        <TextView
             android:id="@+id/remoteButtonsChoice"
             style="@style/SettingsRow"
             android:layout_marginTop="28dp"

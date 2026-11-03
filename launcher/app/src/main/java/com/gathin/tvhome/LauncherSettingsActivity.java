@@ -36,6 +36,7 @@ public final class LauncherSettingsActivity extends Activity {
     private final TextView[] clockChoices = new TextView[CLOCK_FORMATS.length];
     private static final int PICK_WALLPAPER = 41;
     private TextView wallpaperChoice;
+    private TextView weatherChoice;
     private TextView animationsChoice;
     private TextView advancedChoice;
     private TextView followThemeChoice;
@@ -127,6 +128,8 @@ public final class LauncherSettingsActivity extends Activity {
         wallpaperChoice = findViewById(R.id.wallpaperChoice);
         wallpaperChoice.setOnClickListener(v -> showWallpaperPicker());
         findViewById(R.id.remoteButtonsChoice).setOnClickListener(v -> showRemoteButtons());
+        weatherChoice = findViewById(R.id.weatherChoice);
+        weatherChoice.setOnClickListener(v -> showWeatherSettings());
         animationsChoice = findViewById(R.id.animationsChoice);
         animationsChoice.setOnClickListener(v -> {
             animations = !animations;
@@ -298,6 +301,106 @@ public final class LauncherSettingsActivity extends Activity {
                         choices.edit().remove(Config.WALLPAPER_CHOICE_KEY).apply();
                     }
                     image.delete();
+                    changed();
+                    refresh();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private String weatherUnit() {
+        return getString(Weather.fahrenheit(this) ? R.string.weather_fahrenheit : R.string.weather_celsius);
+    }
+
+    /** City and units; Turn off stops the launcher asking the weather service anything. */
+    private void showWeatherSettings() {
+        Weather.Place place = Weather.place(this);
+        String[] rows = new String[place == null ? 2 : 3];
+        rows[0] = place == null ? getString(R.string.weather_set_city) : getString(R.string.weather_city, place.name);
+        rows[1] = getString(R.string.weather_units, weatherUnit());
+        if (place != null) rows[2] = getString(R.string.weather_turn_off);
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.weather_label)
+                .setItems(rows, (dialog, which) -> {
+                    if (which == 0) {
+                        askWeatherCity();
+                    } else if (which == 1) {
+                        Weather.setFahrenheit(this, !Weather.fahrenheit(this));
+                        changed();
+                        refresh();
+                        showWeatherSettings();
+                    } else {
+                        Weather.turnOff(this);
+                        changed();
+                        refresh();
+                    }
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void askWeatherCity() {
+        android.widget.EditText input = new android.widget.EditText(this);
+        input.setSingleLine(true);
+        input.setHint(R.string.weather_city_hint);
+        input.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH);
+        android.widget.FrameLayout box = new android.widget.FrameLayout(this);
+        int pad = (int) (24 * getResources().getDisplayMetrics().density);
+        box.setPadding(pad, pad / 2, pad, 0);
+        box.addView(input);
+        Runnable search = () -> {
+            String name = String.valueOf(input.getText()).trim();
+            if (!name.isEmpty()) searchWeatherCity(name);
+        };
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.weather_set_city)
+                .setView(box)
+                .setPositiveButton(android.R.string.search_go, (d, which) -> search.run())
+                .setNegativeButton(android.R.string.cancel, null)
+                .create();
+        input.setOnEditorActionListener((v, action, event) -> {
+            if (action != android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH) return false;
+            dialog.dismiss();
+            search.run();
+            return true;
+        });
+        dialog.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+        dialog.show();
+        input.requestFocus();
+    }
+
+    private void searchWeatherCity(String name) {
+        new Thread(() -> {
+            List<Weather.Place> found;
+            try {
+                found = Weather.search(name);
+            } catch (java.io.IOException | org.json.JSONException | RuntimeException e) {
+                found = null;
+            }
+            List<Weather.Place> places = found;
+            runOnUiThread(() -> {
+                if (isDestroyed()) return;
+                if (places == null) {
+                    Toast.makeText(this, R.string.weather_search_failed, Toast.LENGTH_LONG).show();
+                } else if (places.isEmpty()) {
+                    Toast.makeText(this, R.string.weather_no_match, Toast.LENGTH_LONG).show();
+                } else {
+                    pickWeatherCity(places);
+                }
+            });
+        }, "weather-search").start();
+    }
+
+    private void pickWeatherCity(List<Weather.Place> places) {
+        String[] labels = new String[places.size()];
+        for (int i = 0; i < labels.length; i++) {
+            Weather.Place place = places.get(i);
+            labels[i] = place.detail.isEmpty() ? place.name : place.name + " (" + place.detail + ")";
+        }
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.weather_set_city)
+                .setItems(labels, (dialog, which) -> {
+                    Weather.setPlace(this, places.get(which));
                     changed();
                     refresh();
                 })
@@ -492,6 +595,9 @@ public final class LauncherSettingsActivity extends Activity {
                 getString(advancedEffects ? R.string.on : R.string.off)));
         advancedChoice.setEnabled(animations);
         advancedChoice.setAlpha(animations ? 1f : 0.5f);
+        Weather.Place weatherPlace = Weather.place(this);
+        weatherChoice.setText(weatherPlace == null ? getString(R.string.weather_off)
+                : getString(R.string.weather_state, weatherPlace.name, weatherUnit()));
         String wallpaperCurrent = choices.getString(Config.WALLPAPER_CHOICE_KEY, null);
         wallpaperChoice.setText(getString(R.string.wallpaper_state,
                 "none".equals(wallpaperCurrent) ? getString(R.string.wallpaper_none)

@@ -364,6 +364,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private static final long INTERNET_BANNER_DELAY_MS = 10_000;
     private TextView internetBanner;
     private AlertDialog announcement;
+    private static final float WEATHER_FADE_DP = 60f;
+    private View weatherPanel;
+    private TextView weatherNow, weatherDetail;
+    private final Runnable weatherTick = this::updateWeather;
     private boolean internetBannerPending;
     private final Runnable showInternetBanner = () -> {
         internetBannerPending = false;
@@ -392,6 +396,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (validated == lastValidated) return;
             lastValidated = validated;
             if (validated) handler.post(MainActivity.this::checkAnnouncement);
+            if (validated) handler.post(MainActivity.this::updateWeather);
             handler.post(MainActivity.this::updateWifiLabel);
         }
     };
@@ -549,6 +554,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (!cfg.dockTitle) hero.setVisibility(View.GONE);
         greeting = findViewById(R.id.greeting);
         internetBanner = findViewById(R.id.internetBanner);
+        weatherPanel = findViewById(R.id.weatherPanel);
+        weatherNow = findViewById(R.id.weatherNow);
+        weatherDetail = findViewById(R.id.weatherDetail);
         clockBlock = findViewById(R.id.leftBlock);
         clockRefresh = new ClockRefresh(clockBlock);
         greetingColor = greeting.getCurrentTextColor();
@@ -770,6 +778,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     glassScrollShiftX -= dx;
                     glass.setTranslationX(glass.getTranslationX() - dx);
                 }
+            }
+        });
+
+        // The rows slide up over the free space, so the weather has faded by the time they reach it.
+        grid.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(@NonNull RecyclerView rv, int dx, int dy) {
+                int shift = rv.canScrollVertically(-1) ? rv.computeVerticalScrollOffset() : 0;
+                weatherPanel.setAlpha(Math.max(0f, 1f - shift / (WEATHER_FADE_DP * density)));
             }
         });
 
@@ -1108,6 +1125,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             return;
         }
         checkAnnouncement();
+        updateWeather();
         restartIdleClock();
         promptsPaused = false;
         if (grid.getAdapter() == null) grid.setAdapter(adapter);   // dropped by onTrimMemory
@@ -1341,6 +1359,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     protected void onStop() {
         super.onStop();
         started = false;
+        handler.removeCallbacks(weatherTick);
         if (announcement != null) announcement.dismiss();
         unregisterReceiver(timeReceiver);
         clockRefresh.stop();
@@ -2926,6 +2945,29 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     /** Shows the Wi-Fi network name on the button when we can read it, otherwise the connection type. */
     @SuppressWarnings("deprecation")
+    /** Shows the reading there is, asks for a newer one when it is due, and looks again in a while. */
+    private void updateWeather() {
+        handler.removeCallbacks(weatherTick);
+        showWeather();
+        Weather.refresh(this, this::showWeather);
+        if (Weather.place(this) != null) handler.postDelayed(weatherTick, Weather.REFRESH_MS);
+    }
+
+    private void showWeather() {
+        Weather.Place place = Weather.place(this);
+        Weather.Reading reading = Weather.current();
+        if (place == null || reading == null) {
+            weatherPanel.setVisibility(View.GONE);
+            return;
+        }
+        boolean fahrenheit = Weather.fahrenheit(this);
+        weatherNow.setText(getString(R.string.weather_now, Weather.degrees(reading.tempC, fahrenheit),
+                getString(Weather.condition(reading.code, reading.day))));
+        weatherDetail.setText(getString(R.string.weather_detail, place.name,
+                Weather.degrees(reading.highC, fahrenheit), Weather.degrees(reading.lowC, fahrenheit)));
+        weatherPanel.setVisibility(View.VISIBLE);
+    }
+
     private void checkAnnouncement() {
         if (announcement == null && resumed) {
             Announcements.check(this, getString(R.string.announcement_url), this::showAnnouncement);
