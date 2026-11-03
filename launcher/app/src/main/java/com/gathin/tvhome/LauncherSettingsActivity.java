@@ -34,6 +34,7 @@ public final class LauncherSettingsActivity extends Activity {
     private final TextView[] dockChoices = new TextView[DOCK_OPACITIES.length];
     private static final String[] CLOCK_FORMATS = {"system", "12", "24"};
     private final TextView[] clockChoices = new TextView[CLOCK_FORMATS.length];
+    private static final int PICK_WALLPAPER = 41;
     private TextView wallpaperChoice;
     private TextView animationsChoice;
     private TextView advancedChoice;
@@ -190,9 +191,12 @@ public final class LauncherSettingsActivity extends Activity {
         // A theme with a single wallpaper.jpg offers that picture too (Config maps the choice back to it).
         File single = dir == null ? null : new File(dir, Config.WALLPAPER_NAME);
         if (single != null && single.isFile()) images.add(0, single);
-        String[] labels = new String[images.size() + 1];
-        for (int i = 0; i < images.size(); i++) labels[i] = images.get(i).getName();
+        List<File> added = CustomWallpapers.only(images);
+        int removeRow = added.isEmpty() ? -1 : images.size() + 1;
+        String[] labels = new String[images.size() + (added.isEmpty() ? 1 : 2)];
+        for (int i = 0; i < images.size(); i++) labels[i] = wallpaperLabel(images.get(i), added);
         labels[images.size()] = getString(R.string.wallpaper_none);
+        if (removeRow >= 0) labels[removeRow] = getString(R.string.wallpaper_remove);
         String current = choices.getString(Config.WALLPAPER_CHOICE_KEY, null);
         int checked = "none".equals(current) ? images.size()
                 : indexOf(images, current);
@@ -200,6 +204,10 @@ public final class LauncherSettingsActivity extends Activity {
                 .setTitle(R.string.wallpaper_label)
                 .setSingleChoiceItems(labels, checked, (dialog, which) -> {
                     dialog.dismiss();
+                    if (which == removeRow) {
+                        showWallpaperRemover(added);
+                        return;
+                    }
                     if (which == images.size()) {
                         choices.edit().putString(Config.WALLPAPER_CHOICE_KEY, "none").apply();
                     } else {
@@ -212,6 +220,83 @@ public final class LauncherSettingsActivity extends Activity {
                 })
                 .setNeutralButton(R.string.wallpaper_theme_default, (dialog, which) -> {
                     choices.edit().remove(Config.WALLPAPER_CHOICE_KEY).apply();
+                    changed();
+                    refresh();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.wallpaper_add, (dialog, which) -> pickWallpaper())
+                .show();
+    }
+
+    private String wallpaperLabel(File image, List<File> added) {
+        int at = added.indexOf(image);
+        return at >= 0 ? getString(R.string.wallpaper_custom, at + 1) : image.getName();
+    }
+
+    /** A file manager hands over the picture and can reach a USB drive; with several, the owner chooses which. */
+    private void pickWallpaper() {
+        Intent pick = new Intent(Intent.ACTION_GET_CONTENT).setType("image/*").addCategory(Intent.CATEGORY_OPENABLE);
+        PackageManager pm = getPackageManager();
+        List<ResolveInfo> pickers = new ArrayList<>();
+        for (ResolveInfo r : pm.queryIntentActivities(pick, 0)) {
+            if (CustomWallpapers.usablePicker(r.activityInfo.packageName)) pickers.add(r);
+        }
+        if (pickers.size() < 2) {
+            if (pickers.size() == 1) pick.setClassName(pickers.get(0).activityInfo.packageName, pickers.get(0).activityInfo.name);
+            startPicker(pick);
+            return;
+        }
+        String[] labels = new String[pickers.size()];
+        for (int i = 0; i < labels.length; i++) labels[i] = pickers.get(i).loadLabel(pm).toString();
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.wallpaper_pick_with)
+                .setItems(labels, (dialog, which) -> {
+                    ResolveInfo r = pickers.get(which);
+                    startPicker(pick.setClassName(r.activityInfo.packageName, r.activityInfo.name));
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void startPicker(Intent pick) {
+        try {
+            startActivityForResult(pick, PICK_WALLPAPER);
+        } catch (android.content.ActivityNotFoundException e) {
+            Toast.makeText(this, R.string.wallpaper_no_picker, Toast.LENGTH_LONG).show();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != PICK_WALLPAPER || resultCode != RESULT_OK || data == null || data.getData() == null) return;
+        android.net.Uri uri = data.getData();
+        new Thread(() -> {
+            File added = CustomWallpapers.add(this, uri);
+            runOnUiThread(() -> {
+                if (added == null) {
+                    Toast.makeText(this, R.string.wallpaper_add_failed, Toast.LENGTH_LONG).show();
+                    return;
+                }
+                choices.edit().putString(Config.WALLPAPER_CHOICE_KEY, added.getName()).apply();
+                changed();
+                Toast.makeText(this, R.string.wallpaper_applied, Toast.LENGTH_SHORT).show();
+                refresh();
+            });
+        }, "wallpaper-add").start();
+    }
+
+    private void showWallpaperRemover(List<File> added) {
+        String[] labels = new String[added.size()];
+        for (int i = 0; i < labels.length; i++) labels[i] = wallpaperLabel(added.get(i), added);
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.wallpaper_remove)
+                .setItems(labels, (dialog, which) -> {
+                    File image = added.get(which);
+                    if (image.getName().equals(choices.getString(Config.WALLPAPER_CHOICE_KEY, null))) {
+                        choices.edit().remove(Config.WALLPAPER_CHOICE_KEY).apply();
+                    }
+                    image.delete();
                     changed();
                     refresh();
                 })
@@ -314,6 +399,7 @@ public final class LauncherSettingsActivity extends Activity {
         String wallpaperCurrent = choices.getString(Config.WALLPAPER_CHOICE_KEY, null);
         wallpaperChoice.setText(getString(R.string.wallpaper_state,
                 "none".equals(wallpaperCurrent) ? getString(R.string.wallpaper_none)
+                        : CustomWallpapers.isCustom(wallpaperCurrent) ? getString(R.string.wallpaper_custom_name)
                         : wallpaperCurrent != null ? wallpaperCurrent
                         : getString(R.string.wallpaper_theme_default)));
         openOnStartChoice.setText(getString(R.string.open_on_start_state, openOnStartLabel()));

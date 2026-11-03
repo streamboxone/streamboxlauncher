@@ -58,6 +58,13 @@
     <string name="wallpaper_none">None</string>
     <string name="wallpaper_applied">Wallpaper changed</string>
     <string name="wallpaper_theme_default">Theme default</string>
+    <string name="wallpaper_add">Add picture</string>
+    <string name="wallpaper_pick_with">Choose a picture with</string>
+    <string name="wallpaper_custom">My picture %1$d</string>
+    <string name="wallpaper_custom_name">My picture</string>
+    <string name="wallpaper_remove">Remove a picture</string>
+    <string name="wallpaper_add_failed">Could not use that picture</string>
+    <string name="wallpaper_no_picker">No app on this TV can pick a picture</string>
     <string name="animations_state">Animations: %1$s</string>
     <string name="advanced_effects">Advanced effects</string>
     <string name="advanced_effects_state">Advanced effects: %1$s</string>
