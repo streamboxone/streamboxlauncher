@@ -324,9 +324,11 @@ public final class LauncherSettingsActivity extends Activity {
     private void showBackup() {
         new AlertDialog.Builder(this)
                 .setTitle(R.string.backup_label)
-                .setItems(new String[]{getString(R.string.backup_save), getString(R.string.backup_restore)}, (dialog, which) -> {
+                .setItems(new String[]{getString(R.string.backup_save), getString(R.string.backup_restore),
+                        getString(R.string.backup_restore_web)}, (dialog, which) -> {
                     if (which == 0) saveBackup();
-                    else pickFile("*/*", PICK_BACKUP, R.string.backup_pick_with);
+                    else if (which == 1) pickFile("*/*", PICK_BACKUP, R.string.backup_pick_with);
+                    else askBackupAddress();
                 })
                 .setNegativeButton(android.R.string.cancel, null)
                 .show();
@@ -340,15 +342,56 @@ public final class LauncherSettingsActivity extends Activity {
         }, "backup-save").start();
     }
 
+    /** The keyboard opens on the last address used, or the site's, with the cursor at the end to add the file's name. */
+    private void askBackupAddress() {
+        android.widget.EditText input = new android.widget.EditText(this);
+        input.setSingleLine(true);
+        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_URI);
+        input.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_GO);
+        input.setHint(R.string.backup_web_hint);
+        input.setText(SettingsBackup.lastWebAddress(this));
+        input.setSelection(input.length());
+        android.widget.FrameLayout box = new android.widget.FrameLayout(this);
+        int pad = (int) (24 * getResources().getDisplayMetrics().density);
+        box.setPadding(pad, pad / 2, pad, 0);
+        box.addView(input);
+        Runnable go = () -> {
+            String address = SettingsBackup.webAddress(String.valueOf(input.getText()));
+            if (address == null) {
+                Toast.makeText(this, R.string.backup_web_invalid, Toast.LENGTH_LONG).show();
+                return;
+            }
+            confirmRestore(() -> SettingsBackup.restoreFromWeb(this, address), R.string.backup_restore_web, R.string.backup_web_failed);
+        };
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.backup_restore_web)
+                .setView(box)
+                .setPositiveButton(android.R.string.ok, (d, which) -> go.run())
+                .setNegativeButton(android.R.string.cancel, null)
+                .create();
+        input.setOnEditorActionListener((v, action, event) -> {
+            if (action != android.view.inputmethod.EditorInfo.IME_ACTION_GO) return false;
+            dialog.dismiss();
+            go.run();
+            return true;
+        });
+        dialog.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+        dialog.show();
+        input.requestFocus();
+    }
+
     private void confirmRestore(android.net.Uri uri) {
+        confirmRestore(() -> SettingsBackup.restore(this, uri), R.string.backup_restore, R.string.backup_restore_failed);
+    }
+
+    private void confirmRestore(java.util.function.BooleanSupplier restore, int title, int failed) {
         new AlertDialog.Builder(this)
-                .setTitle(R.string.backup_restore)
+                .setTitle(title)
                 .setMessage(R.string.backup_restore_confirm)
                 .setPositiveButton(R.string.backup_restore_go, (dialog, which) -> new Thread(() -> {
-                    boolean restored = SettingsBackup.restore(this, uri);
+                    boolean restored = restore.getAsBoolean();
                     runOnUiThread(() -> {
-                        Toast.makeText(this, restored ? R.string.backup_restored : R.string.backup_restore_failed,
-                                Toast.LENGTH_LONG).show();
+                        Toast.makeText(this, restored ? R.string.backup_restored : failed, Toast.LENGTH_LONG).show();
                         if (!restored) return;
                         // Home rebuilds with what came in; this page's rows were read before it did.
                         setResult(RESULT_OK);

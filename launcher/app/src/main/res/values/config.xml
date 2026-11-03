@@ -270,6 +270,9 @@
          An empty file shows nothing, and an empty address here means no checks at all. -->
     <string name="announcement_url" translatable="false">https://streambox.online/announcement.txt</string>
 
+    <!-- Launcher settings, Restore from a web address: what the address starts as, until one has been used. -->
+    <string name="backup_url" translatable="false">https://streambox.online/</string>
+
     <!-- The name across the top of Home. Empty shows nothing. -->
     <string name="top_title" translatable="false">STREAMBOX</string>
 

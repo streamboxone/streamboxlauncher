@@ -161,6 +161,10 @@
     <string name="backup_label">Backup and restore</string>
     <string name="backup_save">Save a backup</string>
     <string name="backup_restore">Restore from a backup</string>
+    <string name="backup_restore_web">Restore from a web address</string>
+    <string name="backup_web_hint">https://example.com/backup.zip</string>
+    <string name="backup_web_invalid">Enter a full https:// address.</string>
+    <string name="backup_web_failed">The backup at that address could not be downloaded or restored.</string>
     <string name="backup_pick_with">Choose the backup with</string>
     <string name="backup_saved">Backup saved to %1$s</string>
     <string name="backup_save_failed">The backup could not be saved.</string>

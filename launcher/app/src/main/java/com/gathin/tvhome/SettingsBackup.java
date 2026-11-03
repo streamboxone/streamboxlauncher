@@ -22,6 +22,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.text.SimpleDateFormat;
@@ -54,6 +57,10 @@ final class SettingsBackup {
     private static final Set<String> LOCAL_KEYS = new HashSet<>(Arrays.asList(Config.SETTINGS_REVISION_KEY, Config.THEME_SIGNATURE_KEY));
     static final long MAX_BYTES = 256L * 1024 * 1024;
     static final int MAX_ENTRIES = 512;
+    private static final int CONNECT_TIMEOUT_MS = 10_000;
+    private static final int READ_TIMEOUT_MS = 30_000;
+    private static final String WEB_PREFS = "backup_web";
+    private static final String WEB_ADDRESS = "address";
 
     private SettingsBackup() { }
 
@@ -188,16 +195,84 @@ final class SettingsBackup {
 
     // ---- restore ---------------------------------------------------------------------------------
 
+    /** What was typed as a full HTTPS address (https:// is added when left out), or null when it can't be one. */
+    static String webAddress(String typed) {
+        if (typed == null) return null;
+        String address = typed.trim();
+        if (address.isEmpty() || address.matches(".*\\s.*")) return null;
+        if (!address.contains("://")) address = "https://" + address;
+        try {
+            URL url = new URL(address);
+            return "https".equalsIgnoreCase(url.getProtocol()) && !url.getHost().isEmpty() ? address : null;
+        } catch (MalformedURLException e) {
+            return null;
+        }
+    }
+
+    /** The last address restored from, or the one this build came with. Kept to this box, so not in a backup. */
+    static String lastWebAddress(Context context) {
+        return context.getSharedPreferences(WEB_PREFS, Context.MODE_PRIVATE)
+                .getString(WEB_ADDRESS, context.getString(R.string.backup_url));
+    }
+
+    /** Saves the file at this address into target. Throws on any answer but the file, or more than limit bytes. */
+    static void download(String address, File target, long limit) throws IOException {
+        HttpURLConnection connection = (HttpURLConnection) new URL(address).openConnection();
+        try {
+            connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
+            connection.setReadTimeout(READ_TIMEOUT_MS);
+            connection.setUseCaches(false);
+            if (connection.getResponseCode() != HttpURLConnection.HTTP_OK) throw new IOException("No file at " + address);
+            long total = 0;
+            byte[] buffer = new byte[16 * 1024];
+            try (InputStream input = connection.getInputStream(); OutputStream output = new FileOutputStream(target)) {
+                int count;
+                while ((count = input.read(buffer)) != -1) {
+                    total += count;
+                    if (total > limit) throw new IOException("File too large at " + address);
+                    output.write(buffer, 0, count);
+                }
+            }
+        } finally {
+            connection.disconnect();
+        }
+    }
+
+    /** The same as restoring from a file, from an HTTPS address, off the UI thread. A web page or error is refused. */
+    static boolean restoreFromWeb(Context context, String typed) {
+        String address = webAddress(typed);
+        if (address == null) return false;
+        File file = new File(context.getCacheDir(), "restore-download.zip");
+        try {
+            download(address, file, MAX_BYTES);
+            boolean restored;
+            try (InputStream input = new FileInputStream(file)) {
+                restored = restore(context, input);
+            }
+            if (restored) context.getSharedPreferences(WEB_PREFS, Context.MODE_PRIVATE).edit().putString(WEB_ADDRESS, address).apply();
+            return restored;
+        } catch (IOException | RuntimeException e) {
+            return false;
+        } finally {
+            file.delete();
+        }
+    }
+
     /** Replaces this box's layout and settings with the backup, off the UI thread. False leaves the settings as they were. */
     static boolean restore(Context context, Uri uri) {
+        try (InputStream input = context.getContentResolver().openInputStream(uri)) {
+            return input != null && restore(context, input);
+        } catch (IOException | RuntimeException e) {
+            return false;
+        }
+    }
+
+    private static boolean restore(Context context, InputStream backup) {
         File stage = new File(context.getCacheDir(), "restore");
         try {
             delete(stage);
             if (!stage.mkdirs()) return false;
-            try (InputStream input = context.getContentResolver().openInputStream(uri)) {
-                if (input == null) return false;
-                unpack(input, stage);
-            }
+            unpack(backup, stage);
             JSONObject manifest = new JSONObject(new String(Files.readAllBytes(new File(stage, MANIFEST).toPath()), StandardCharsets.UTF_8));
             if (manifest.getInt("version") != VERSION) return false;
             JSONObject prefs = manifest.getJSONObject("prefs");
