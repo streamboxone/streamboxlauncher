@@ -254,7 +254,7 @@ final class AppLibraryDialog {
                     known = new Known(updated, loadLabel(pm, entry.getValue()));
                     KNOWN.put(pkg, known);
                 }
-                names.put(pkg, known.label);
+                names.put(pkg, AppRenames.label(activity, pkg, known.label));
             }
             KNOWN.keySet().retainAll(unique.keySet());
             main.post(() -> {
@@ -298,7 +298,7 @@ final class AppLibraryDialog {
         String pkg = app.activityInfo.packageName;
         String cached = labels.get(pkg);
         if (cached != null) return cached;
-        String value = loadLabel(activity.getPackageManager(), app);
+        String value = AppRenames.label(activity, pkg, loadLabel(activity.getPackageManager(), app));
         labels.put(pkg, value);
         return value;
     }

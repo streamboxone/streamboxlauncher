@@ -79,7 +79,7 @@
         android:localeConfig="@xml/locales_config">
 
         <activity
-            android:name=".MainActivity"
+            android:name=".MainActivity" android:windowSoftInputMode="adjustNothing"
             android:exported="true"
             android:launchMode="singleTask"
             android:stateNotNeeded="true"

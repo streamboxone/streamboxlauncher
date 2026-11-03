@@ -3,6 +3,7 @@ package com.gathin.tvhome;
 import android.animation.ArgbEvaluator;
 import android.animation.ValueAnimator;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
@@ -62,6 +63,7 @@ import android.view.ViewTreeObserver;
 import android.view.Window;
 import android.view.animation.AnimationUtils;
 import android.view.animation.LayoutAnimationController;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -3830,6 +3832,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             pickUp(at);
             Toast.makeText(this, R.string.reorder_hint, Toast.LENGTH_LONG).show();
         });
+        String label = adapter.labelAt(position);
+        addSettingsMenuRow(rows, popup, R.string.tile_rename, () -> showRenameDialog(pkg, label));
         if (appLibraryEnabled) addSettingsMenuRow(rows, popup, R.string.library_remove_shortcut, () -> {
             if (LibraryApps.save(this, pkg, false)) reloadApps(false);
             else Toast.makeText(this, R.string.library_save_failed, Toast.LENGTH_LONG).show();
@@ -3855,6 +3859,49 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     .setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f)).start();
         }
         rows.getChildAt(0).requestFocus();
+    }
+
+    /** Rename from the tile menu: the keyboard opens on an empty field, with the current name as its hint. */
+    private void showRenameDialog(String pkg, String current) {
+        EditText input = new EditText(this);
+        input.setSingleLine(true);
+        input.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(AppRenames.MAX_LENGTH)});
+        input.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_DONE);
+        input.setHint(current);
+        FrameLayout box = new FrameLayout(this);
+        int pad = (int) (24 * density);
+        box.setPadding(pad, pad / 2, pad, 0);
+        box.addView(input);
+        boolean[] changed = {false};
+        Runnable save = () -> {
+            String name = AppRenames.normalize(String.valueOf(input.getText()));
+            if (name.isEmpty()) return;   // nothing typed: keep the current name
+            AppRenames.set(this, pkg, name);
+            changed[0] = true;
+        };
+        AlertDialog.Builder builder = new AlertDialog.Builder(this)
+                .setTitle(R.string.tile_rename)
+                .setView(box)
+                .setPositiveButton(android.R.string.ok, (d, which) -> save.run())
+                .setNegativeButton(android.R.string.cancel, null);
+        if (AppRenames.get(this, pkg) != null) {
+            builder.setNeutralButton(R.string.tile_rename_reset, (d, which) -> {
+                AppRenames.set(this, pkg, "");
+                changed[0] = true;
+            });
+        }
+        AlertDialog dialog = builder.create();
+        input.setOnEditorActionListener((v, action, event) -> {
+            if (action != android.view.inputmethod.EditorInfo.IME_ACTION_DONE) return false;
+            save.run();
+            dialog.dismiss();
+            return true;
+        });
+        // animate puts focus back on the tile: the rebuild happens while the dialog holds the window's focus.
+        dialog.setOnDismissListener(d -> reloadApps(true, changed[0], false));
+        dialog.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+        dialog.show();
+        input.requestFocus();
     }
 
     private void addSettingsMenuRow(LinearLayout rows, PopupWindow popup, int title, Runnable action) {
