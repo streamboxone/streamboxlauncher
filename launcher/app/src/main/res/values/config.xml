@@ -266,6 +266,10 @@
          Xiaomi offers Chinese and English only). Empty, the default, follows the TV. A theme can set it ("locale"). -->
     <string name="locale" translatable="false"></string>
 
+    <!-- A plain text file over HTTPS, shown on Home until dismissed, then again only when its contents change.
+         An empty file shows nothing, and an empty address here means no checks at all. -->
+    <string name="announcement_url" translatable="false">https://streambox.online/announcement.txt</string>
+
     <!-- The name across the top of Home. Empty shows nothing. -->
     <string name="top_title" translatable="false">STREAMBOX</string>
 

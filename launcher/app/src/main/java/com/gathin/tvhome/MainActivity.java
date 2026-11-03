@@ -363,6 +363,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private static final long INTERNET_BANNER_DELAY_MS = 10_000;
     private TextView internetBanner;
+    private AlertDialog announcement;
     private boolean internetBannerPending;
     private final Runnable showInternetBanner = () -> {
         internetBannerPending = false;
@@ -390,6 +391,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (validated && startPending != null) handler.post(openWhenOnline);
             if (validated == lastValidated) return;
             lastValidated = validated;
+            if (validated) handler.post(MainActivity.this::checkAnnouncement);
             handler.post(MainActivity.this::updateWifiLabel);
         }
     };
@@ -1105,6 +1107,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             recreate();
             return;
         }
+        checkAnnouncement();
         restartIdleClock();
         promptsPaused = false;
         if (grid.getAdapter() == null) grid.setAdapter(adapter);   // dropped by onTrimMemory
@@ -1338,6 +1341,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     protected void onStop() {
         super.onStop();
         started = false;
+        if (announcement != null) announcement.dismiss();
         unregisterReceiver(timeReceiver);
         clockRefresh.stop();
         handler.removeCallbacks(clockCheck);
@@ -1385,6 +1389,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         RemoteKeys.release(this);
         cancelHoldOk();
         handler.removeCallbacks(showInternetBanner);
+        if (announcement != null) announcement.dismiss();
         if (gameDay != null) gameDay.shutdown();
         unregisterReceiver(packageReceiver);
         if (openOnStartOnWake) unregisterReceiver(wakeReceiver);
@@ -2921,6 +2926,53 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     /** Shows the Wi-Fi network name on the button when we can read it, otherwise the connection type. */
     @SuppressWarnings("deprecation")
+    private void checkAnnouncement() {
+        if (announcement == null && resumed) {
+            Announcements.check(this, getString(R.string.announcement_url), this::showAnnouncement);
+        }
+    }
+
+    /**
+     * OK and Back are the only ways that count as dismissing it. Home leaving the screen closes it unread, and it comes
+     * back the next time Home comes up. Up and Down scroll a long one while OK stays on the button.
+     */
+    private void showAnnouncement(String text) {
+        if (isDestroyed() || !resumed) {
+            Announcements.checkAgain();
+            return;
+        }
+        TextView body = new TextView(this);
+        body.setText(text);
+        body.setTextSize(16);
+        body.setTextColor(0xFFFFFFFF);
+        body.setTypeface(UiFont.get(this, R.string.font_regular));
+        int pad = (int) (24 * density);
+        body.setPadding(pad, pad, pad, pad / 2);
+        android.widget.ScrollView scroll = new android.widget.ScrollView(this);
+        scroll.addView(body);
+        scroll.setFocusable(false);   // OK keeps the focus, and the key listener below does the scrolling
+        boolean[] read = {false};
+        announcement = new AlertDialog.Builder(this)
+                .setView(scroll)
+                .setPositiveButton(android.R.string.ok, (d, which) -> read[0] = true)
+                .setOnCancelListener(d -> read[0] = true)
+                .setOnDismissListener(d -> {
+                    announcement = null;
+                    if (read[0]) Announcements.dismissed(this, text);
+                    else Announcements.checkAgain();
+                })
+                .setOnKeyListener((d, code, event) -> {
+                    if (code != KeyEvent.KEYCODE_DPAD_UP && code != KeyEvent.KEYCODE_DPAD_DOWN) return false;
+                    if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                        int step = scroll.getHeight() * 2 / 3;
+                        scroll.smoothScrollBy(0, code == KeyEvent.KEYCODE_DPAD_UP ? -step : step);
+                    }
+                    return true;
+                })
+                .show();
+        announcement.getButton(AlertDialog.BUTTON_POSITIVE).requestFocus();
+    }
+
     /**
      * The banner under the title. Android's validation says the internet was really reached, so it also covers Wi-Fi
      * that is up with a dead line behind it. It waits before appearing: at boot Wi-Fi connects after Home is shown.
