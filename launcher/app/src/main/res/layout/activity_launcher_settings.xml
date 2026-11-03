@@ -124,6 +124,12 @@
             android:text="@string/categories_label" />
 
         <TextView
+            android:id="@+id/backupChoice"
+            style="@style/SettingsRow"
+            android:layout_marginTop="28dp"
+            android:text="@string/backup_label" />
+
+        <TextView
             android:id="@+id/remoteButtonsChoice"
             style="@style/SettingsRow"
             android:layout_marginTop="28dp"

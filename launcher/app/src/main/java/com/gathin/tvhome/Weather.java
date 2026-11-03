@@ -95,6 +95,11 @@ final class Weather {
         prefs(context).edit().remove("name").remove("latitude").remove("longitude").apply();
     }
 
+    /** Lets go of the last reading, which may be for another city (a restored backup). */
+    static void forget() {
+        last = null;
+    }
+
     static boolean fahrenheit(Context context) {
         return prefs(context).getBoolean("fahrenheit", false);
     }

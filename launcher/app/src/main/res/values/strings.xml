@@ -158,6 +158,16 @@
     <string name="tile_move">Move</string>
     <string name="tile_rename">Rename</string>
     <string name="tile_category">Category</string>
+    <string name="backup_label">Backup and restore</string>
+    <string name="backup_save">Save a backup</string>
+    <string name="backup_restore">Restore from a backup</string>
+    <string name="backup_pick_with">Choose the backup with</string>
+    <string name="backup_saved">Backup saved to %1$s</string>
+    <string name="backup_save_failed">The backup could not be saved.</string>
+    <string name="backup_restore_confirm">This replaces the layout, settings and added pictures on this box. Apps are not installed or removed, and any in the backup that are missing here are left out.</string>
+    <string name="backup_restore_go">Restore</string>
+    <string name="backup_restored">Backup restored.</string>
+    <string name="backup_restore_failed">That file could not be restored.</string>
     <string name="categories_label">App categories</string>
     <string name="category_other">Other apps</string>
     <string name="category_new">New category</string>

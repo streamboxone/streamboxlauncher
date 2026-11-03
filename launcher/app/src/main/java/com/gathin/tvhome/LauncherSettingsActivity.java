@@ -35,6 +35,7 @@ public final class LauncherSettingsActivity extends Activity {
     private static final String[] CLOCK_FORMATS = {"system", "12", "24"};
     private final TextView[] clockChoices = new TextView[CLOCK_FORMATS.length];
     private static final int PICK_WALLPAPER = 41;
+    private static final int PICK_BACKUP = 42;
     private TextView wallpaperChoice;
     private TextView weatherChoice;
     private TextView animationsChoice;
@@ -129,6 +130,7 @@ public final class LauncherSettingsActivity extends Activity {
         wallpaperChoice.setOnClickListener(v -> showWallpaperPicker());
         findViewById(R.id.remoteButtonsChoice).setOnClickListener(v -> showRemoteButtons());
         findViewById(R.id.categoriesChoice).setOnClickListener(v -> showCategories());
+        findViewById(R.id.backupChoice).setOnClickListener(v -> showBackup());
         weatherChoice = findViewById(R.id.weatherChoice);
         weatherChoice.setOnClickListener(v -> showWeatherSettings());
         animationsChoice = findViewById(R.id.animationsChoice);
@@ -240,7 +242,11 @@ public final class LauncherSettingsActivity extends Activity {
 
     /** A file manager hands over the picture and can reach a USB drive; with several, the owner chooses which. */
     private void pickWallpaper() {
-        Intent pick = new Intent(Intent.ACTION_GET_CONTENT).setType("image/*").addCategory(Intent.CATEGORY_OPENABLE);
+        pickFile("image/*", PICK_WALLPAPER, R.string.wallpaper_pick_with);
+    }
+
+    private void pickFile(String type, int request, int chooseWith) {
+        Intent pick = new Intent(Intent.ACTION_GET_CONTENT).setType(type).addCategory(Intent.CATEGORY_OPENABLE);
         PackageManager pm = getPackageManager();
         List<ResolveInfo> pickers = new ArrayList<>();
         for (ResolveInfo r : pm.queryIntentActivities(pick, 0)) {
@@ -248,24 +254,24 @@ public final class LauncherSettingsActivity extends Activity {
         }
         if (pickers.size() < 2) {
             if (pickers.size() == 1) pick.setClassName(pickers.get(0).activityInfo.packageName, pickers.get(0).activityInfo.name);
-            startPicker(pick);
+            startPicker(pick, request);
             return;
         }
         String[] labels = new String[pickers.size()];
         for (int i = 0; i < labels.length; i++) labels[i] = pickers.get(i).loadLabel(pm).toString();
         new AlertDialog.Builder(this)
-                .setTitle(R.string.wallpaper_pick_with)
+                .setTitle(chooseWith)
                 .setItems(labels, (dialog, which) -> {
                     ResolveInfo r = pickers.get(which);
-                    startPicker(pick.setClassName(r.activityInfo.packageName, r.activityInfo.name));
+                    startPicker(pick.setClassName(r.activityInfo.packageName, r.activityInfo.name), request);
                 })
                 .setNegativeButton(android.R.string.cancel, null)
                 .show();
     }
 
-    private void startPicker(Intent pick) {
+    private void startPicker(Intent pick, int request) {
         try {
-            startActivityForResult(pick, PICK_WALLPAPER);
+            startActivityForResult(pick, request);
         } catch (android.content.ActivityNotFoundException e) {
             Toast.makeText(this, R.string.wallpaper_no_picker, Toast.LENGTH_LONG).show();
         }
@@ -274,8 +280,13 @@ public final class LauncherSettingsActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode != PICK_WALLPAPER || resultCode != RESULT_OK || data == null || data.getData() == null) return;
+        if (resultCode != RESULT_OK || data == null || data.getData() == null) return;
         android.net.Uri uri = data.getData();
+        if (requestCode == PICK_BACKUP) {
+            confirmRestore(uri);
+            return;
+        }
+        if (requestCode != PICK_WALLPAPER) return;
         new Thread(() -> {
             File added = CustomWallpapers.add(this, uri);
             runOnUiThread(() -> {
@@ -305,6 +316,45 @@ public final class LauncherSettingsActivity extends Activity {
                     changed();
                     refresh();
                 })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    /** One file with the layout and settings, to keep or to set up another box. */
+    private void showBackup() {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.backup_label)
+                .setItems(new String[]{getString(R.string.backup_save), getString(R.string.backup_restore)}, (dialog, which) -> {
+                    if (which == 0) saveBackup();
+                    else pickFile("*/*", PICK_BACKUP, R.string.backup_pick_with);
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void saveBackup() {
+        new Thread(() -> {
+            String saved = SettingsBackup.save(this);
+            runOnUiThread(() -> Toast.makeText(this, saved == null ? getString(R.string.backup_save_failed)
+                    : getString(R.string.backup_saved, saved), Toast.LENGTH_LONG).show());
+        }, "backup-save").start();
+    }
+
+    private void confirmRestore(android.net.Uri uri) {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.backup_restore)
+                .setMessage(R.string.backup_restore_confirm)
+                .setPositiveButton(R.string.backup_restore_go, (dialog, which) -> new Thread(() -> {
+                    boolean restored = SettingsBackup.restore(this, uri);
+                    runOnUiThread(() -> {
+                        Toast.makeText(this, restored ? R.string.backup_restored : R.string.backup_restore_failed,
+                                Toast.LENGTH_LONG).show();
+                        if (!restored) return;
+                        // Home rebuilds with what came in; this page's rows were read before it did.
+                        setResult(RESULT_OK);
+                        finish();
+                    });
+                }, "backup-restore").start())
                 .setNegativeButton(android.R.string.cancel, null)
                 .show();
     }
