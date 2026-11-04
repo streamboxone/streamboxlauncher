@@ -4,11 +4,26 @@ android {
     compileSdk 34
     buildFeatures { aidl false }
     defaultConfig { applicationId 'ca.techshop.streamboxupdates'; minSdk 26; targetSdk 34; versionCode 1; versionName '1.0' }
+    // The StreamBox release key, kept outside the repo. Updates only install over the same key, so every box needs this one.
+    def releaseKey = new File(System.getProperty('user.home'), '.streambox/signing.properties')
+    signingConfigs {
+        if (releaseKey.isFile()) {
+            def key = new Properties()
+            releaseKey.withInputStream { key.load(it) }
+            streambox {
+                storeFile file(key.storeFile)
+                storePassword key.storePassword
+                keyAlias key.keyAlias
+                keyPassword key.keyPassword
+            }
+        }
+    }
+
     buildTypes { release {
         minifyEnabled true
         shrinkResources true
         proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-        signingConfig signingConfigs.debug
+        signingConfig releaseKey.isFile() ? signingConfigs.streambox : signingConfigs.debug
     } }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
 }

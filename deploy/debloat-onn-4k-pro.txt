@@ -1,0 +1,26 @@
+# Turned off with -Debloat, on the Onn 4K Pro only. Disabled, never uninstalled: -UndoDebloat turns them back on.
+# The set tried on the first box. The stock launcher and setup wizard are handled by the Home step, not here.
+
+# Telemetry and feedback
+com.google.android.feedback
+com.android.tv.feedbackconsent
+
+# Ads and on-device learning
+com.android.adservices.api
+com.android.ondevicepersonalization.services
+com.android.federatedcompute.services
+
+# Preloaded and background
+com.google.android.play.games
+com.android.printspooler
+com.android.providers.calendar
+com.google.android.syncadapters.calendar
+com.android.providers.contacts
+com.android.providers.userdictionary
+
+# Google apps replaced on these boxes
+com.google.android.youtube.tv
+com.google.android.videos
+
+# Google's ambient screensaver
+com.google.android.apps.tv.dreamx

@@ -17,14 +17,29 @@ android {
         versionName '3.3'
     }
 
+    // The StreamBox release key, kept outside the repo. Updates only install over the same key, so every box needs this one.
+    def releaseKey = new File(System.getProperty('user.home'), '.streambox/signing.properties')
+    signingConfigs {
+        if (releaseKey.isFile()) {
+            def key = new Properties()
+            releaseKey.withInputStream { key.load(it) }
+            streambox {
+                storeFile file(key.storeFile)
+                storePassword key.storePassword
+                keyAlias key.keyAlias
+                keyPassword key.keyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
             // R8 strips and optimises the code (AndroidX included): smaller APK, faster start on a slow TV CPU.
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            // Sideloaded over ADB, never published: sign with the debug key so it installs over a debug build.
-            signingConfig signingConfigs.debug
+            // Without the release key, the debug key, so a build still works anywhere.
+            signingConfig releaseKey.isFile() ? signingConfigs.streambox : signingConfigs.debug
         }
     }
 
