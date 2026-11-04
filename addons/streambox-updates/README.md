@@ -1,7 +1,7 @@
 # StreamBox Updates
 
 Reads a text file from the web, shows which apps on the box are out of date and which new ones are on offer, and
-installs them. The launcher's Update pill opens it. It also shows the used and free storage.
+installs them. The launcher's Update pill opens it. It also shows the used and free storage; select that to open the Storage page in Settings.
 
 It is its own app so it can update the launcher, and so Home never carries the install permissions.
 

@@ -3,6 +3,7 @@ package ca.techshop.streamboxupdates;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.PendingIntent;
+import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -102,6 +103,7 @@ public final class UpdatesActivity extends Activity {
         updateAll = findViewById(R.id.updateAll);
         updateAll.setOnClickListener(v -> updateEverything());
         findViewById(R.id.close).setOnClickListener(v -> onBackPressed());
+        findViewById(R.id.storage).setOnClickListener(v -> openStorage());
         findViewById(R.id.close).requestFocus();
         IntentFilter filter = new IntentFilter(ACTION_DONE);
         if (Build.VERSION.SDK_INT >= 33) registerReceiver(finished, filter, Context.RECEIVER_NOT_EXPORTED);
@@ -114,7 +116,11 @@ public final class UpdatesActivity extends Activity {
     @Override
     protected void onRestart() {
         super.onRestart();
+        showStorage();
+        View storage = findViewById(R.id.storage);
+        boolean onStorage = storage.hasFocus();
         if (working == null && !items.isEmpty()) rebuild();
+        if (onStorage) storage.requestFocus();
     }
 
     @Override
@@ -141,6 +147,16 @@ public final class UpdatesActivity extends Activity {
         long free = stat.getAvailableBytes();
         ((TextView) findViewById(R.id.storageText)).setText(getString(R.string.storage, Catalog.size(free), Catalog.size(total)));
         ((ProgressBar) findViewById(R.id.storageBar)).setProgress(total == 0 ? 0 : (int) ((total - free) * 100 / total));
+    }
+
+    /** Not during an install: it may still need to put Android's prompt on screen. */
+    private void openStorage() {
+        if (working != null) return;
+        try {
+            startActivity(new Intent(Settings.ACTION_INTERNAL_STORAGE_SETTINGS));
+        } catch (ActivityNotFoundException e) {
+            startActivity(new Intent(Settings.ACTION_SETTINGS));
+        }
     }
 
     private void load() {
