@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Update pill: opens the update_pill_app. -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    style="@style/TopButton"
+    android:drawableStart="@drawable/ic_update"
+    android:text="@string/update_pill"
+    android:nextFocusDown="@+id/grid" />

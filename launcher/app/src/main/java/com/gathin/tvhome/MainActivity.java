@@ -2594,6 +2594,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     /** top_bar_apps buttons, in bar order. */
     private final List<View> topAppButtons = new ArrayList<>();
+    /** Of the top_bar_apps, this one is a pill with the word Update instead of a round logo. */
+    private static final String UPDATE_PILL_APP = "ca.techshop.streamboxupdates";
 
     /**
      * Puts each top_bar_apps app in the top bar as a round pill with the app's own logo, left of the network pill.
@@ -2621,13 +2623,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             } catch (PackageManager.NameNotFoundException e) {
                 continue;
             }
-            TextView button = (TextView) getLayoutInflater().inflate(R.layout.top_app_button, bar, false);
+            boolean updatePill = pkg.equals(UPDATE_PILL_APP);
+            TextView button = (TextView) getLayoutInflater().inflate(updatePill ? R.layout.top_update_button : R.layout.top_app_button, bar, false);
             // pillKeys finds the bar's ends by id: without one of its own, every app button would be an end.
             button.setId(View.generateViewId());
-            logo.setBounds(0, 0, size, size);
-            button.setCompoundDrawablesRelative(logo, null, null, null);
-            button.setCompoundDrawableTintList(null);
-            button.setContentDescription(label);
+            if (!updatePill) {
+                logo.setBounds(0, 0, size, size);
+                button.setCompoundDrawablesRelative(logo, null, null, null);
+                button.setCompoundDrawableTintList(null);
+                button.setContentDescription(label);
+            }
             Intent target = launch;
             button.setOnClickListener(v -> open(new Intent(target)));
             // After the network pill and the VPN pill; the Hebrew bar runs the other way, so before both there.

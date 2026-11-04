@@ -158,6 +158,7 @@
     <string name="tile_move">Move</string>
     <string name="tile_rename">Rename</string>
     <string name="tile_category">Category</string>
+    <string name="update_pill">Update</string>
     <string name="backup_label">Backup and restore</string>
     <string name="backup_save">Save a backup</string>
     <string name="backup_restore">Restore from a backup</string>

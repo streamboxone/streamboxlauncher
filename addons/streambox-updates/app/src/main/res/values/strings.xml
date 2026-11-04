@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">StreamBox Updates</string>
+    <!-- The list of apps. See this add-on's README for what goes in it. -->
+    <string name="updates_url" translatable="false">https://streambox.online/updates.txt</string>
+    <string name="title">Updates</string>
+    <string name="storage">%1$s free of %2$s</string>
+    <string name="checking">Checking for updates…</string>
+    <string name="load_failed">Could not load %1$s</string>
+    <string name="all_current">Everything is up to date.</string>
+    <string name="section_updates">Updates</string>
+    <string name="section_new">New apps</string>
+    <string name="update_all">Update all</string>
+    <string name="close">Close</string>
+    <string name="finishing">Finishing the app in progress…</string>
+    <string name="version_change">%1$s → %2$s</string>
+    <string name="erases_data">%1$s  ·  Reinstalled: its settings and sign-ins are erased</string>
+    <string name="action_update">Update</string>
+    <string name="action_install">Install</string>
+    <string name="action_waiting">Waiting</string>
+    <string name="action_downloading">Downloading</string>
+    <string name="action_percent">%1$d%%</string>
+    <string name="action_removing">Removing</string>
+    <string name="action_installing">Installing</string>
+    <string name="allow_installs">In the list, turn on StreamBox Updates, then press Back and try again.</string>
+    <string name="failed_download">the download failed.</string>
+    <string name="failed_space">there is not enough free space.</string>
+    <string name="failed_checksum">the download did not match its checksum, so it was not installed.</string>
+    <string name="failed_wrong_app">the file is not this app, so it was not installed.</string>
+    <string name="failed_protected">Home and this app can\'t be uninstalled first. Set its flag to 0.</string>
+    <string name="failed_uninstall">it was not uninstalled, so the old version is still there.</string>
+    <string name="failed_install">it could not be installed.</string>
+    <string name="failed_cancelled">cancelled.</string>
+    <string name="failed_conflict">signed differently from the installed app. Set its flag to 1 to uninstall it first.</string>
+    <plurals name="up_to_date">
+        <item quantity="one">%1$d app up to date</item>
+        <item quantity="other">%1$d apps up to date</item>
+    </plurals>
+    <plurals name="bad_lines">
+        <item quantity="one">%1$d line in the file could not be read</item>
+        <item quantity="other">%1$d lines in the file could not be read</item>
+    </plurals>
+</resources>
