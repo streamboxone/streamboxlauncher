@@ -3,7 +3,6 @@ package com.gathin.tvhome;
 import android.animation.ArgbEvaluator;
 import android.animation.ValueAnimator;
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
@@ -363,7 +362,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private static final long INTERNET_BANNER_DELAY_MS = 10_000;
     private TextView internetBanner;
-    private AlertDialog announcement;
+    private TvDialog announcement;
     private static final float WEATHER_FADE_DP = 60f;
     private View weatherPanel;
     private TextView weatherNow, weatherDetail;
@@ -2994,13 +2993,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         body.setTextSize(16);
         body.setTextColor(0xFFFFFFFF);
         body.setTypeface(UiFont.get(this, R.string.font_regular));
-        int pad = (int) (24 * density);
-        body.setPadding(pad, pad, pad, pad / 2);
+        int pad = (int) (12 * density);
+        body.setPadding(pad, pad / 2, pad, 0);
         android.widget.ScrollView scroll = new android.widget.ScrollView(this);
         scroll.addView(body);
         scroll.setFocusable(false);   // OK keeps the focus, and the key listener below does the scrolling
         boolean[] read = {false};
-        announcement = new AlertDialog.Builder(this)
+        announcement = new TvDialog.Builder(this)
                 .setView(scroll)
                 .setPositiveButton(android.R.string.ok, (d, which) -> read[0] = true)
                 .setOnCancelListener(d -> read[0] = true)
@@ -3018,7 +3017,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     return true;
                 })
                 .show();
-        announcement.getButton(AlertDialog.BUTTON_POSITIVE).requestFocus();
     }
 
     /**
@@ -3994,13 +3992,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         String current = AppCategories.of(this, pkg);
         boolean inOne = names.contains(current);
         String[] rows = new String[names.size() + (inOne ? 2 : 1)];
-        for (int i = 0; i < names.size(); i++) rows[i] = names.get(i).equals(current) ? "\u2713 " + names.get(i) : names.get(i);
+        for (int i = 0; i < names.size(); i++) rows[i] = names.get(i);
         rows[names.size()] = getString(R.string.category_new);
         if (inOne) rows[names.size() + 1] = getString(R.string.category_none);
         boolean[] changed = {false};
         boolean[] asking = {false};
-        new AlertDialog.Builder(this)
+        new TvDialog.Builder(this)
                 .setTitle(R.string.tile_category)
+                .setChecked(names.indexOf(current))
                 .setItems(rows, (d, which) -> {
                     if (which < names.size()) {
                         AppCategories.assign(this, pkg, names.get(which));
@@ -4034,10 +4033,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         input.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(AppRenames.MAX_LENGTH)});
         input.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_DONE);
         input.setHint(current);
-        FrameLayout box = new FrameLayout(this);
-        int pad = (int) (24 * density);
-        box.setPadding(pad, pad / 2, pad, 0);
-        box.addView(input);
         boolean[] changed = {false};
         Runnable save = () -> {
             String name = AppRenames.normalize(String.valueOf(input.getText()));
@@ -4045,9 +4040,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             AppRenames.set(this, pkg, name);
             changed[0] = true;
         };
-        AlertDialog.Builder builder = new AlertDialog.Builder(this)
+        TvDialog.Builder builder = new TvDialog.Builder(this)
                 .setTitle(R.string.tile_rename)
-                .setView(box)
+                .setInput(input)
                 .setPositiveButton(android.R.string.ok, (d, which) -> save.run())
                 .setNegativeButton(android.R.string.cancel, null);
         if (AppRenames.get(this, pkg) != null) {
@@ -4056,7 +4051,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 changed[0] = true;
             });
         }
-        AlertDialog dialog = builder.create();
+        TvDialog dialog = builder.create();
         input.setOnEditorActionListener((v, action, event) -> {
             if (action != android.view.inputmethod.EditorInfo.IME_ACTION_DONE) return false;
             save.run();

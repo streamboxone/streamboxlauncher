@@ -1,7 +1,6 @@
 package com.gathin.tvhome;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -147,7 +146,7 @@ public final class LauncherSettingsActivity extends Activity {
             if (advancedEffects) {
                 setAdvanced(false);
             } else {
-                new AlertDialog.Builder(this)
+                new TvDialog.Builder(this)
                         .setTitle(R.string.advanced_effects)
                         .setMessage(R.string.advanced_effects_warning)
                         .setPositiveButton(R.string.enable, (dialog, which) -> setAdvanced(true))
@@ -207,7 +206,7 @@ public final class LauncherSettingsActivity extends Activity {
         String current = choices.getString(Config.WALLPAPER_CHOICE_KEY, null);
         int checked = "none".equals(current) ? images.size()
                 : indexOf(images, current);
-        new AlertDialog.Builder(this)
+        new TvDialog.Builder(this)
                 .setTitle(R.string.wallpaper_label)
                 .setSingleChoiceItems(labels, checked, (dialog, which) -> {
                     dialog.dismiss();
@@ -259,7 +258,7 @@ public final class LauncherSettingsActivity extends Activity {
         }
         String[] labels = new String[pickers.size()];
         for (int i = 0; i < labels.length; i++) labels[i] = pickers.get(i).loadLabel(pm).toString();
-        new AlertDialog.Builder(this)
+        new TvDialog.Builder(this)
                 .setTitle(chooseWith)
                 .setItems(labels, (dialog, which) -> {
                     ResolveInfo r = pickers.get(which);
@@ -305,7 +304,7 @@ public final class LauncherSettingsActivity extends Activity {
     private void showWallpaperRemover(List<File> added) {
         String[] labels = new String[added.size()];
         for (int i = 0; i < labels.length; i++) labels[i] = wallpaperLabel(added.get(i), added);
-        new AlertDialog.Builder(this)
+        new TvDialog.Builder(this)
                 .setTitle(R.string.wallpaper_remove)
                 .setItems(labels, (dialog, which) -> {
                     File image = added.get(which);
@@ -322,7 +321,7 @@ public final class LauncherSettingsActivity extends Activity {
 
     /** One file with the layout and settings, to keep or to set up another box. */
     private void showBackup() {
-        new AlertDialog.Builder(this)
+        new TvDialog.Builder(this)
                 .setTitle(R.string.backup_label)
                 .setItems(new String[]{getString(R.string.backup_save), getString(R.string.backup_restore),
                         getString(R.string.backup_restore_web)}, (dialog, which) -> {
@@ -351,10 +350,6 @@ public final class LauncherSettingsActivity extends Activity {
         input.setHint(R.string.backup_web_hint);
         input.setText(SettingsBackup.lastWebAddress(this));
         input.setSelection(input.length());
-        android.widget.FrameLayout box = new android.widget.FrameLayout(this);
-        int pad = (int) (24 * getResources().getDisplayMetrics().density);
-        box.setPadding(pad, pad / 2, pad, 0);
-        box.addView(input);
         Runnable go = () -> {
             String address = SettingsBackup.webAddress(String.valueOf(input.getText()));
             if (address == null) {
@@ -363,9 +358,9 @@ public final class LauncherSettingsActivity extends Activity {
             }
             confirmRestore(() -> SettingsBackup.restoreFromWeb(this, address), R.string.backup_restore_web, R.string.backup_web_failed);
         };
-        AlertDialog dialog = new AlertDialog.Builder(this)
+        TvDialog dialog = new TvDialog.Builder(this)
                 .setTitle(R.string.backup_restore_web)
-                .setView(box)
+                .setInput(input)
                 .setPositiveButton(android.R.string.ok, (d, which) -> go.run())
                 .setNegativeButton(android.R.string.cancel, null)
                 .create();
@@ -385,7 +380,7 @@ public final class LauncherSettingsActivity extends Activity {
     }
 
     private void confirmRestore(java.util.function.BooleanSupplier restore, int title, int failed) {
-        new AlertDialog.Builder(this)
+        new TvDialog.Builder(this)
                 .setTitle(title)
                 .setMessage(R.string.backup_restore_confirm)
                 .setPositiveButton(R.string.backup_restore_go, (dialog, which) -> new Thread(() -> {
@@ -408,7 +403,7 @@ public final class LauncherSettingsActivity extends Activity {
         String[] rows = new String[names.size() + 1];
         for (int i = 0; i < names.size(); i++) rows[i] = names.get(i);
         rows[names.size()] = getString(R.string.category_new);
-        new AlertDialog.Builder(this)
+        new TvDialog.Builder(this)
                 .setTitle(R.string.categories_label)
                 .setItems(rows, (dialog, which) -> {
                     if (which < names.size()) showCategory(names.get(which));
@@ -422,7 +417,7 @@ public final class LauncherSettingsActivity extends Activity {
     }
 
     private void showCategory(String name) {
-        new AlertDialog.Builder(this)
+        new TvDialog.Builder(this)
                 .setTitle(name)
                 .setItems(new String[]{getString(R.string.tile_rename), getString(R.string.category_move_up),
                         getString(R.string.category_move_down), getString(R.string.category_delete)}, (dialog, which) -> {
@@ -432,7 +427,7 @@ public final class LauncherSettingsActivity extends Activity {
                             else if (!AppCategories.normalize(to).isEmpty()) Toast.makeText(this, R.string.category_taken, Toast.LENGTH_LONG).show();
                         }, this::showCategories);
                     } else if (which == 3) {
-                        new AlertDialog.Builder(this)
+                        new TvDialog.Builder(this)
                                 .setTitle(getString(R.string.category_delete_confirm, name))
                                 .setPositiveButton(R.string.category_delete, (d, w) -> {
                                     AppCategories.remove(this, name);
@@ -462,7 +457,7 @@ public final class LauncherSettingsActivity extends Activity {
         rows[0] = place == null ? getString(R.string.weather_set_city) : getString(R.string.weather_city, place.name);
         rows[1] = getString(R.string.weather_units, weatherUnit());
         if (place != null) rows[2] = getString(R.string.weather_turn_off);
-        new AlertDialog.Builder(this)
+        new TvDialog.Builder(this)
                 .setTitle(R.string.weather_label)
                 .setItems(rows, (dialog, which) -> {
                     if (which == 0) {
@@ -487,17 +482,13 @@ public final class LauncherSettingsActivity extends Activity {
         input.setSingleLine(true);
         input.setHint(R.string.weather_city_hint);
         input.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH);
-        android.widget.FrameLayout box = new android.widget.FrameLayout(this);
-        int pad = (int) (24 * getResources().getDisplayMetrics().density);
-        box.setPadding(pad, pad / 2, pad, 0);
-        box.addView(input);
         Runnable search = () -> {
             String name = String.valueOf(input.getText()).trim();
             if (!name.isEmpty()) searchWeatherCity(name);
         };
-        AlertDialog dialog = new AlertDialog.Builder(this)
+        TvDialog dialog = new TvDialog.Builder(this)
                 .setTitle(R.string.weather_set_city)
-                .setView(box)
+                .setInput(input)
                 .setPositiveButton(android.R.string.search_go, (d, which) -> search.run())
                 .setNegativeButton(android.R.string.cancel, null)
                 .create();
@@ -540,7 +531,7 @@ public final class LauncherSettingsActivity extends Activity {
             Weather.Place place = places.get(i);
             labels[i] = place.detail.isEmpty() ? place.name : place.name + " (" + place.detail + ")";
         }
-        new AlertDialog.Builder(this)
+        new TvDialog.Builder(this)
                 .setTitle(R.string.weather_set_city)
                 .setItems(labels, (dialog, which) -> {
                     Weather.setPlace(this, places.get(which));
@@ -561,7 +552,7 @@ public final class LauncherSettingsActivity extends Activity {
         String[] rows = new String[buttons.size() + 1];
         rows[0] = getString(R.string.remote_buttons_add);
         for (int i = 0; i < buttons.size(); i++) rows[i + 1] = buttonSummary(buttons.get(i));
-        new AlertDialog.Builder(this)
+        new TvDialog.Builder(this)
                 .setTitle(R.string.remote_buttons)
                 .setItems(rows, (dialog, which) -> {
                     if (which == 0) captureButton();
@@ -593,7 +584,7 @@ public final class LauncherSettingsActivity extends Activity {
     }
 
     private void captureButton() {
-        AlertDialog prompt = new AlertDialog.Builder(this)
+        TvDialog prompt = new TvDialog.Builder(this)
                 .setTitle(R.string.remote_buttons_add)
                 .setMessage(R.string.remote_buttons_press)
                 .setNegativeButton(android.R.string.cancel, null)
@@ -611,7 +602,7 @@ public final class LauncherSettingsActivity extends Activity {
                 getString(R.string.remote_button_tap, actionLabel(ButtonMappings.get(this, code, false))),
                 getString(R.string.remote_button_hold, actionLabel(ButtonMappings.get(this, code, true))),
                 getString(R.string.remote_button_remove)};
-        new AlertDialog.Builder(this)
+        new TvDialog.Builder(this)
                 .setTitle(ButtonMappings.name(code))
                 .setItems(rows, (dialog, which) -> {
                     if (which == 2) {
@@ -630,7 +621,7 @@ public final class LauncherSettingsActivity extends Activity {
         String[] labels = new String[apps.size() + 1];
         labels[0] = getString(R.string.remote_button_unset);
         for (int i = 0; i < apps.size(); i++) labels[i + 1] = apps.get(i)[0];
-        new AlertDialog.Builder(this)
+        new TvDialog.Builder(this)
                 .setTitle(hold ? R.string.remote_button_hold_title : R.string.remote_button_tap_title)
                 .setItems(labels, (dialog, which) -> {
                     ButtonMappings.set(this, code, hold, which == 0 ? null : apps.get(which - 1)[1]);
@@ -667,7 +658,7 @@ public final class LauncherSettingsActivity extends Activity {
             labels[i + 1] = apps.get(i)[0];
             if (apps.get(i)[1].equals(current)) checked = i + 1;
         }
-        new AlertDialog.Builder(this)
+        new TvDialog.Builder(this)
                 .setTitle(R.string.open_on_start_label)
                 .setSingleChoiceItems(labels, checked, (dialog, which) -> {
                     dialog.dismiss();

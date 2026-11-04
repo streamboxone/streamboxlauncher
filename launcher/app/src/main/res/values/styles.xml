@@ -4,6 +4,7 @@
         <item name="android:windowBackground">@android:color/black</item>
         <item name="android:colorBackground">@android:color/black</item>
         <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:colorAccent">#FFFFFFFF</item>
     </style>
 
     <!-- Frosted pill, tvOS style. -->
@@ -42,8 +43,9 @@
         <item name="android:paddingStart">18dp</item>
         <item name="android:paddingEnd">18dp</item>
         <item name="android:background">@drawable/settings_choice_bg</item>
-        <item name="android:textColor">#FFFFFFFF</item>
-        <item name="android:textSize">18sp</item>
+        <item name="android:textColor">@drawable/pill_text</item>
+        <item name="android:textSize">17sp</item>
+        <item name="android:fontFamily">@string/font_medium</item>
         <item name="android:focusable">true</item>
         <item name="android:clickable">true</item>
     </style>

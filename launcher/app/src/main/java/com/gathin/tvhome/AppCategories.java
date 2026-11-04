@@ -1,6 +1,5 @@
 package com.gathin.tvhome;
 
-import android.app.AlertDialog;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.text.InputFilter;
@@ -127,13 +126,9 @@ final class AppCategories {
         input.setFilters(new InputFilter[]{new InputFilter.LengthFilter(MAX_LENGTH)});
         input.setImeOptions(EditorInfo.IME_ACTION_DONE);
         input.setHint(hint);
-        FrameLayout box = new FrameLayout(context);
-        int pad = (int) (24 * context.getResources().getDisplayMetrics().density);
-        box.setPadding(pad, pad / 2, pad, 0);
-        box.addView(input);
-        AlertDialog dialog = new AlertDialog.Builder(context)
+        TvDialog dialog = new TvDialog.Builder(context)
                 .setTitle(title)
-                .setView(box)
+                .setInput(input)
                 .setPositiveButton(android.R.string.ok, (d, which) -> done.accept(String.valueOf(input.getText())))
                 .setNegativeButton(android.R.string.cancel, null)
                 .create();

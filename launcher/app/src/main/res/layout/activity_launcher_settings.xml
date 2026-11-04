@@ -2,7 +2,7 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FF101419"
+    android:background="@drawable/settings_page_bg"
     android:fillViewport="true">
 
     <LinearLayout
@@ -19,7 +19,9 @@
             android:layout_height="wrap_content"
             android:text="@string/launcher_settings"
             android:textColor="#FFFFFFFF"
-            android:textSize="34sp" />
+            android:textSize="34sp"
+            android:fontFamily="@string/font_medium"
+            android:letterSpacing="-0.01" />
 
         <TextView
             android:id="@+id/reorderChoice"
@@ -34,12 +36,14 @@
             android:layout_marginTop="28dp"
             android:text="@string/columns_label"
             android:textColor="#FFFFFFFF"
-            android:textSize="20sp" />
+            android:textSize="18sp"
+            android:fontFamily="@string/font_medium" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
+            android:layout_marginEnd="-10dp"
             android:orientation="horizontal">
 
             <TextView android:id="@+id/columns4" style="@style/SettingsColumnChoice" android:text="4" />
@@ -54,12 +58,14 @@
             android:layout_marginTop="18dp"
             android:text="@string/rows_below_dock_label"
             android:textColor="#FFFFFFFF"
-            android:textSize="20sp" />
+            android:textSize="18sp"
+            android:fontFamily="@string/font_medium" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
+            android:layout_marginEnd="-10dp"
             android:orientation="horizontal">
 
             <TextView android:id="@+id/rows0" style="@style/SettingsColumnChoice" android:text="0" />
@@ -74,12 +80,14 @@
             android:layout_marginTop="18dp"
             android:text="@string/dock_opacity_label"
             android:textColor="#FFFFFFFF"
-            android:textSize="20sp" />
+            android:textSize="18sp"
+            android:fontFamily="@string/font_medium" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
+            android:layout_marginEnd="-10dp"
             android:orientation="horizontal">
 
             <TextView android:id="@+id/dock100" style="@style/SettingsColumnChoice" android:text="100%" />
@@ -94,12 +102,14 @@
             android:layout_marginTop="18dp"
             android:text="@string/dream_name"
             android:textColor="#FFFFFFFF"
-            android:textSize="20sp" />
+            android:textSize="18sp"
+            android:fontFamily="@string/font_medium" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
+            android:layout_marginEnd="-10dp"
             android:orientation="horizontal">
 
             <TextView android:id="@+id/clockSystem" style="@style/SettingsColumnChoice" android:text="@string/clock_format_system" />
@@ -150,8 +160,9 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:text="@string/advanced_effects_warning"
-            android:textColor="#FFACB8C1"
-            android:textSize="14sp" />
+            android:textColor="#99FFFFFF"
+            android:textSize="14sp"
+            android:fontFamily="@string/font_body" />
 
         <TextView
             android:id="@+id/openOnStartChoice"
@@ -170,8 +181,9 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="7dp"
             android:text="@string/follow_theme_hint"
-            android:textColor="#FFACB8C1"
-            android:textSize="14sp" />
+            android:textColor="#99FFFFFF"
+            android:textSize="14sp"
+            android:fontFamily="@string/font_body" />
 
         <TextView
             android:id="@+id/defaultHomeChoice"
@@ -184,8 +196,9 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="7dp"
             android:text="@string/home_settings_help"
-            android:textColor="#FFACB8C1"
-            android:textSize="14sp" />
+            android:textColor="#99FFFFFF"
+            android:textSize="14sp"
+            android:fontFamily="@string/font_body" />
 
         <TextView
             android:id="@+id/tvSettingsChoice"
