@@ -51,6 +51,10 @@ if ($CheckClosed) {
     } finally { $client.Close() }
 }
 
+if (-not $UndoDebloat -and -not ((Test-Path (Join-Path $here 'apps\launcher.apk')) -and (Test-Path (Join-Path $here 'apps\updates.apk')))) {
+    Stop-Here "the apps are not in $here\apps. Run install.bat from the unpacked StreamBox-Deploy package, not from the repo's deploy folder. python deploy\build-package.py makes it, in work\deploy. Nothing was changed."
+}
+
 $adb = @(
     (Join-Path $here 'platform-tools\adb.exe'),
     (Join-Path $env:LOCALAPPDATA 'Android\Sdk\platform-tools\adb.exe')
