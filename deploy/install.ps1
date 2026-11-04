@@ -94,6 +94,12 @@ $sdk = 0
 [void][int]::TryParse((Box getprop ro.build.version.sdk), [ref]$sdk)
 if ($sdk -lt 26) { Stop-Here "this box runs SDK $sdk and the launcher needs 26. Nothing was changed." }
 
+Step 'Declining Play Protect app scanning'
+# These boxes run apps from outside the Play Store. README.txt says how to undo this.
+[void](Box settings put global package_verifier_user_consent '-1')
+if ((Box settings get global package_verifier_user_consent) -eq '-1') { Write-Host 'Play Protect scanning: declined' }
+else { Write-Host 'WARNING: the Play Protect setting did not change.' -ForegroundColor Yellow }
+
 Step 'Installing the apps'
 foreach ($app in @(@('StreamBox launcher', 'launcher.apk'), @('StreamBox Updates', 'updates.apk'))) {
     $result = Adb install -r (Join-Path $here "apps\$($app[1])")

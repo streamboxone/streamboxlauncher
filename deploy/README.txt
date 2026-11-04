@@ -34,3 +34,6 @@ platform-tools into this folder: https://developer.android.com/tools/releases/pl
 
 Other apps come from the Update pill on Home, which reads https://streambox.online/updates.txt.
 -UndoDebloat turns the listed apps back on.
+
+The install also declines Play Protect's app scanning (package_verifier_user_consent -1), so sideloaded apps aren't
+checked for harmful behaviour. To undo it: adb shell settings delete global package_verifier_user_consent
