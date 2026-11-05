@@ -2,7 +2,7 @@
 # It is safe to run again. It stops, and says why, rather than risk the box's Wi-Fi or Home screen.
 #
 #   install.bat <box ip[:port]>                 install and set up
-#   install.bat <box ip[:port]> -Debloat        also turn off or remove the listed apps (the Onn 4K Pro this list is for only)
+#   install.bat <box ip[:port]> -Debloat        also turn off or remove the listed apps (the Onn models this list is for only)
 #   install.bat <box ip[:port]> -UndoDebloat    turn the listed apps back on, and bring back removed ones that came with the box
 #   install.bat <box ip> -CheckClosed [-Port n] after turning debugging off: is the port really closed?
 #
@@ -21,7 +21,7 @@ $launcher = 'com.gathin.tvhome'
 $updates = 'ca.techshop.streamboxupdates'
 $wizard = 'com.google.android.tungsten.setupwraith'
 $knownStock = @('com.google.android.tvlauncher', 'com.google.android.apps.tv.launcherx', 'com.google.android.leanbacklauncher')
-$debloatModel = 'onn. Streaming Device 4K pro'
+$debloatModels = @('onn. Streaming Device 4K pro', 'onn. Full HD Streaming Device')
 $here = $PSScriptRoot
 
 function Stop-Here([string]$why) {
@@ -238,8 +238,8 @@ if ((Box settings get secure enabled_accessibility_services) -notmatch 'InputKey
 
 if ($Debloat) {
     Step 'Removing and turning off the listed apps'
-    if ($model -ne $debloatModel) {
-        Write-Host "SKIPPED: this list is for '$debloatModel' and this box is '$model'." -ForegroundColor Yellow
+    if ($debloatModels -notcontains $model) {
+        Write-Host "SKIPPED: this list is for '$($debloatModels -join "', '")' and this box is '$model'." -ForegroundColor Yellow
     } else {
         foreach ($pkg in $removed) {
             if (-not (Listed $pkg @())) { Write-Host "$pkg : not on this box"; continue }
