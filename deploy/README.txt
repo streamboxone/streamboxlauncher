@@ -44,3 +44,6 @@ can't fill the box. To undo it: adb shell rm /sdcard/Download/TiviMate/Recording
 
 It copies files\edge-settings.bak to /sdcard/Download, ready to restore in Edge. This package includes that file, so
 share the package only with people who should have those settings.
+
+If Aerial Views is installed, it becomes the screensaver. If it isn't, the screensaver is left alone: install it,
+then run the script again.

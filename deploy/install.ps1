@@ -139,6 +139,19 @@ if (-not (Test-Path $edgeLocal)) {
     else { Write-Host 'WARNING: the Edge settings backup did not copy.' -ForegroundColor Yellow }
 }
 
+Step 'Making Aerial Views the screensaver'
+# The default and the chosen one both: Android uses the chosen one, and -Debloat turns off Google's default.
+$aerial = 'com.neilturner.aerialviews/com.neilturner.aerialviews.ui.screensaver.DreamActivity'
+if (-not (Listed 'com.neilturner.aerialviews' @())) {
+    Write-Host 'WARNING: Aerial Views is not installed, so the screensaver was left alone. Install it, then run this again.' -ForegroundColor Yellow
+} else {
+    [void](Box settings put secure screensaver_default_component $aerial)
+    [void](Box settings put secure screensaver_components $aerial)
+    if ((Box settings get secure screensaver_default_component) -eq $aerial -and (Box settings get secure screensaver_components) -eq $aerial) {
+        Write-Host 'Screensaver: Aerial Views'
+    } else { Write-Host 'WARNING: the screensaver setting did not change.' -ForegroundColor Yellow }
+}
+
 Step 'Checking who owns Home'
 if ((Box pm list packages) -match 'package:com\.cvte\.') {
     Stop-Here 'this is a CVTE board, where changing Home needs its own steps. The apps are installed; Home was not touched.'
