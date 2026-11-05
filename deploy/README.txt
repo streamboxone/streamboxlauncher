@@ -41,3 +41,6 @@ checked for harmful behaviour. To undo it: adb shell settings delete global pack
 
 It also puts a file at /sdcard/Download/TiviMate/Recordings, in place of the folder TiviMate records into, so recordings
 can't fill the box. To undo it: adb shell rm /sdcard/Download/TiviMate/Recordings
+
+It copies files\edge-settings.bak to /sdcard/Download, ready to restore in Edge. This package includes that file, so
+share the package only with people who should have those settings.

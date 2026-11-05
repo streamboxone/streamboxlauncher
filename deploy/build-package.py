@@ -24,6 +24,8 @@ APKS = {
     "launcher.apk": ROOT / "launcher/app/build/outputs/apk/release/app-release.apk",
     "updates.apk": ROOT / "addons/streambox-updates/app/build/outputs/apk/release/app-release.apk",
 }
+# Kept outside the repo, like the key: this repo holds no binaries, and this one is someone's settings.
+EDGE_SETTINGS = pathlib.Path(r"D:\installs\chromecast\edge-settings.bak")
 
 
 def fingerprint_of_key():
@@ -43,6 +45,8 @@ def fingerprint_of_apk(apk):
 def main():
     if not PROPS.is_file():
         sys.exit("no release key at %s: every box is tied to that key, so this won't build with another" % PROPS)
+    if not EDGE_SETTINGS.is_file():
+        sys.exit("no Edge settings backup at %s" % EDGE_SETTINGS)
     env = {**os.environ, "JAVA_HOME": str(JAVA), "ANDROID_HOME": str(SDK)}
     gradle = [str(ROOT / "launcher/gradlew.bat"), "--no-daemon", "testReleaseUnitTest", "lintRelease", "assembleRelease"]
     subprocess.run(gradle, cwd=ROOT / "launcher", env=env, check=True)
@@ -60,6 +64,7 @@ def main():
     with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as z:
         for name, apk in APKS.items():
             z.write(apk, "StreamBox-Deploy/apps/" + name)
+        z.write(EDGE_SETTINGS, "StreamBox-Deploy/files/" + EDGE_SETTINGS.name)
         for name in ("install.ps1", "install.bat", "debloat-onn-4k-pro.txt", "README.txt"):
             z.write(ROOT / "deploy" / name, "StreamBox-Deploy/" + name)
     print("Package:", target, "(%d KB)" % (target.stat().st_size // 1024))

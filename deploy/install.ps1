@@ -128,6 +128,17 @@ $tivimate = '/sdcard/Download/TiviMate'
 if ((Box "[ -f $tivimate/Recordings ] && echo file") -eq 'file') { Write-Host 'TiviMate recordings: blocked' }
 else { Write-Host "WARNING: $tivimate/Recordings is a folder with files in it, so recordings are not blocked. Nothing was deleted." -ForegroundColor Yellow }
 
+Step 'Copying the Edge settings backup'
+$edgeLocal = Join-Path $here 'files\edge-settings.bak'
+$edgeBox = '/sdcard/Download/edge-settings.bak'
+if (-not (Test-Path $edgeLocal)) {
+    Write-Host 'WARNING: files\edge-settings.bak is not in this package, so it was not copied.' -ForegroundColor Yellow
+} else {
+    [void](Adb push $edgeLocal $edgeBox)
+    if ((Box "wc -c < $edgeBox") -eq "$((Get-Item $edgeLocal).Length)") { Write-Host "Edge settings backup: copied to $edgeBox" }
+    else { Write-Host 'WARNING: the Edge settings backup did not copy.' -ForegroundColor Yellow }
+}
+
 Step 'Checking who owns Home'
 if ((Box pm list packages) -match 'package:com\.cvte\.') {
     Stop-Here 'this is a CVTE board, where changing Home needs its own steps. The apps are installed; Home was not touched.'
