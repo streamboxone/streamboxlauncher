@@ -113,6 +113,14 @@ foreach ($app in @(@('StreamBox launcher', 'launcher.apk'), @('StreamBox Updates
 [void](Box appops set $updates REQUEST_INSTALL_PACKAGES allow)
 Write-Host 'StreamBox Updates: allowed to install apps'
 
+Step 'Blocking TiviMate recordings'
+# A file where TiviMate wants its Recordings folder, so recordings can't fill the box. The file is what blocks it:
+# shared storage ignores chmod here. An empty folder is replaced; one holding recordings is left alone.
+$tivimate = '/sdcard/Download/TiviMate'
+[void](Box "mkdir -p $tivimate; rmdir $tivimate/Recordings 2>/dev/null; touch $tivimate/Recordings; chmod 444 $tivimate/Recordings")
+if ((Box "[ -f $tivimate/Recordings ] && echo file") -eq 'file') { Write-Host 'TiviMate recordings: blocked' }
+else { Write-Host "WARNING: $tivimate/Recordings is a folder with files in it, so recordings are not blocked. Nothing was deleted." -ForegroundColor Yellow }
+
 Step 'Checking who owns Home'
 if ((Box pm list packages) -match 'package:com\.cvte\.') {
     Stop-Here 'this is a CVTE board, where changing Home needs its own steps. The apps are installed; Home was not touched.'

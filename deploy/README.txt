@@ -37,3 +37,6 @@ Other apps come from the Update pill on Home, which reads https://streambox.onli
 
 The install also declines Play Protect's app scanning (package_verifier_user_consent -1), so sideloaded apps aren't
 checked for harmful behaviour. To undo it: adb shell settings delete global package_verifier_user_consent
+
+It also puts a file at /sdcard/Download/TiviMate/Recordings, in place of the folder TiviMate records into, so recordings
+can't fill the box. To undo it: adb shell rm /sdcard/Download/TiviMate/Recordings
