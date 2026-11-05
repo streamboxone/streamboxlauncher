@@ -1,4 +1,5 @@
-# Turned off with -Debloat, on the Onn 4K Pro only. Disabled, never uninstalled: -UndoDebloat turns them back on.
+# Used with -Debloat, on the Onn 4K Pro only. Each app is disabled, or removed if its line starts with "remove".
+# -UndoDebloat turns disabled apps back on, and brings back removed ones that came with the box.
 # The set tried on the first box. The stock launcher and setup wizard are handled by the Home step, not here.
 
 # Telemetry and feedback
@@ -20,7 +21,12 @@ com.android.providers.userdictionary
 
 # Google apps replaced on these boxes
 com.google.android.youtube.tv
+com.google.android.youtube.tvmusic
 com.google.android.videos
+
+# Bell apps, removed
+remove ca.bellmedia.cravetv
+remove com.quickplay.android.bellmediaplayer
 
 # Google's ambient screensaver
 com.google.android.apps.tv.dreamx

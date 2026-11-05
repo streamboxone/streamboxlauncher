@@ -18,7 +18,7 @@ platform-tools into this folder: https://developer.android.com/tools/releases/pl
 
        install.bat <box ip>:<port>
 
-   Add -Debloat on an Onn 4K Pro to also turn off the unwanted apps in debloat-onn-4k-pro.txt.
+   Add -Debloat on an Onn 4K Pro to also turn off or remove the unwanted apps in debloat-onn-4k-pro.txt.
 
    If it stops, it says why, and running it again is safe. The usual one on a new box: the saved Wi-Fi belongs to the
    setup wizard. On the box, forget the network and join it again, then run this again. The port may change.
@@ -33,7 +33,8 @@ platform-tools into this folder: https://developer.android.com/tools/releases/pl
    Only CLOSED counts. UNKNOWN means the box didn't answer, so check that it's awake and try again.
 
 Other apps come from the Update pill on Home, which reads https://streambox.online/updates.txt.
--UndoDebloat turns the listed apps back on.
+-UndoDebloat turns the listed apps back on, and brings back removed apps that came with the box. A removed app that
+was installed later has to be installed again from the Play Store.
 
 The install also declines Play Protect's app scanning (package_verifier_user_consent -1), so sideloaded apps aren't
 checked for harmful behaviour. To undo it: adb shell settings delete global package_verifier_user_consent

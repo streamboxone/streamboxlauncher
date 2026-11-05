@@ -2,8 +2,8 @@
 # It is safe to run again. It stops, and says why, rather than risk the box's Wi-Fi or Home screen.
 #
 #   install.bat <box ip[:port]>                 install and set up
-#   install.bat <box ip[:port]> -Debloat        also turn off the listed apps (the Onn 4K Pro this list is for only)
-#   install.bat <box ip[:port]> -UndoDebloat    turn the listed apps back on
+#   install.bat <box ip[:port]> -Debloat        also turn off or remove the listed apps (the Onn 4K Pro this list is for only)
+#   install.bat <box ip[:port]> -UndoDebloat    turn the listed apps back on, and bring back removed ones that came with the box
 #   install.bat <box ip> -CheckClosed [-Port n] after turning debugging off: is the port really closed?
 #
 # -Ethernet is for a box with no saved Wi-Fi network at all, where the Wi-Fi owner can't be read.
@@ -80,13 +80,20 @@ if ($state -ne 'device') {
 }
 
 $listFile = Join-Path $here 'debloat-onn-4k-pro.txt'
-$listed = @()
-if (Test-Path $listFile) { $listed = @(Get-Content $listFile | ForEach-Object { ($_ -replace '#.*$', '').Trim() } | Where-Object { $_ }) }
+$lines = @()
+if (Test-Path $listFile) { $lines = @(Get-Content $listFile | ForEach-Object { ($_ -replace '#.*$', '').Trim() } | Where-Object { $_ }) }
+$listed = @($lines | Where-Object { $_ -notmatch '^remove\s' })
+$removed = @($lines | Where-Object { $_ -match '^remove\s' } | ForEach-Object { ($_ -replace '^remove\s+', '') })
 $model = Box getprop ro.product.model
 
 if ($UndoDebloat) {
     Step 'Turning the listed apps back on'
     foreach ($pkg in $listed) { Write-Host "$pkg : $(Box pm enable --user 0 $pkg)" }
+    foreach ($pkg in $removed) {
+        [void](Box cmd package install-existing --user 0 $pkg)
+        if (Listed $pkg @()) { Write-Host "$pkg : back" }
+        else { Write-Host "$pkg : not brought back. It didn't come with this box, so install it again from the Play Store." }
+    }
     exit 0
 }
 
@@ -206,10 +213,16 @@ if ((Box settings get secure enabled_accessibility_services) -notmatch 'InputKey
 } else { Write-Host 'Helper on' }
 
 if ($Debloat) {
-    Step 'Turning off the listed apps'
+    Step 'Removing and turning off the listed apps'
     if ($model -ne $debloatModel) {
         Write-Host "SKIPPED: this list is for '$debloatModel' and this box is '$model'." -ForegroundColor Yellow
     } else {
+        foreach ($pkg in $removed) {
+            if (-not (Listed $pkg @())) { Write-Host "$pkg : not on this box"; continue }
+            $answer = Box pm uninstall --user 0 $pkg
+            if (Listed $pkg @()) { Write-Host "$pkg : STILL THERE ($answer)" -ForegroundColor Yellow }
+            else { Write-Host "$pkg : removed" }
+        }
         # One package per shell call: chained pm commands can silently stop after the first.
         foreach ($pkg in $listed) {
             if (-not (Listed $pkg @())) { Write-Host "$pkg : not on this box"; continue }
