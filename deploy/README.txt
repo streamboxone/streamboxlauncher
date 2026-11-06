@@ -18,7 +18,7 @@ platform-tools into this folder: https://developer.android.com/tools/releases/pl
 
        install.bat <box ip>:<port>
 
-   Add -Debloat on an Onn 4K Pro or Onn Full HD to also turn off or remove the unwanted apps in debloat-onn-4k-pro.txt.
+   Add -Debloat on an Onn 4K Pro, Onn Full HD or Chromecast with Google TV to also turn off or remove the unwanted apps in debloat-onn-4k-pro.txt.
 
    If it stops, it says why, and running it again is safe. The usual one on a new box: the saved Wi-Fi belongs to the
    setup wizard. On the box, forget the network and join it again, then run this again. The port may change.
