@@ -76,4 +76,29 @@ public class CatalogTest {
         assertFalse(Catalog.mayUninstall("me.app", "me.app"));
         assertTrue(Catalog.mayUninstall("a.b", "me.app"));
     }
+
+    @Test public void aRemoveLineIsRead() {
+        Catalog c = Catalog.parse("remove | Old TV | com.old.tv | stopped working\nREMOVE | Other | a.b\nA | a.c | 1 | 1 | 0 | a.apk", FILE);
+        assertEquals(0, c.badLines);
+        assertEquals(1, c.entries.size());
+        assertEquals(2, c.removals.size());
+        assertEquals("Old TV", c.removals.get(0).name);
+        assertEquals("com.old.tv", c.removals.get(0).pkg);
+        assertEquals("stopped working", c.removals.get(0).note);
+        assertEquals("", c.removals.get(1).note);
+    }
+
+    @Test public void aBadRemoveLineIsCounted() {
+        for (String bad : new String[]{
+                "remove | Old",
+                "remove | Old | nodots",
+                "remove |  | a.b",
+                "remove | Old | a.b | note | extra",
+                "remove | Home | com.gathin.tvhome",
+                "remove | Me | ca.techshop.streamboxupdates"}) {
+            Catalog c = Catalog.parse(bad, FILE);
+            assertEquals(bad, 1, c.badLines);
+            assertTrue(bad, c.removals.isEmpty());
+        }
+    }
 }

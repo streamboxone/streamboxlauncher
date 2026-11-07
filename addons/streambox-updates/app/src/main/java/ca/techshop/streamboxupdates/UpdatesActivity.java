@@ -2,6 +2,7 @@ package ca.techshop.streamboxupdates;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.PendingIntent;
 import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
@@ -11,6 +12,7 @@ import android.content.IntentFilter;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageInstaller;
 import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -27,6 +29,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -86,6 +89,14 @@ public final class UpdatesActivity extends Activity {
                 if (confirm != null) startActivity(confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
                 return;
             }
+            if (removingOld != null) {
+                removedOld(code == PackageInstaller.STATUS_SUCCESS);
+                return;
+            }
+            if (removingApp != null) {
+                removedApp(code == PackageInstaller.STATUS_SUCCESS);
+                return;
+            }
             if (working == null) return;
             if (uninstalling) uninstalled(code == PackageInstaller.STATUS_SUCCESS);
             else installed(code, intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE));
@@ -103,6 +114,8 @@ public final class UpdatesActivity extends Activity {
         updateAll = findViewById(R.id.updateAll);
         updateAll.setOnClickListener(v -> updateEverything());
         findViewById(R.id.close).setOnClickListener(v -> onBackPressed());
+        removeToggle = findViewById(R.id.removeMode);
+        removeToggle.setOnClickListener(v -> toggleRemoveMode());
         findViewById(R.id.storage).setOnClickListener(v -> openStorage());
         findViewById(R.id.close).requestFocus();
         IntentFilter filter = new IntentFilter(ACTION_DONE);
@@ -133,6 +146,10 @@ public final class UpdatesActivity extends Activity {
     /** While an app is on its way, Back only cancels the ones after it: a half-done install has to report in first. */
     @Override
     public void onBackPressed() {
+        if (removeMode && working == null && removingApp == null) {
+            toggleRemoveMode();
+            return;
+        }
         if (working == null) {
             finish();
             return;
@@ -203,13 +220,257 @@ public final class UpdatesActivity extends Activity {
         items.clear();
         for (Catalog.Entry entry : catalog.entries) items.add(new Item(entry));
         badLines = catalog.badLines;
+        removals.clear();
+        removals.addAll(catalog.removals);
         rebuild();
+        offerSwitch();
+    }
+
+    // Switching from an older launcher to StreamBox. The old ones are removed only once Android says StreamBox is
+    // Home, so the box is never left without one.
+
+    static final String LAUNCHER = "com.gathin.tvhome";
+    static final String[] OLD_LAUNCHERS = {"com.wolf.firelauncher", "com.spocky.projengmenu"};
+
+    /** The launcher is being installed for a switch: when the queue empties, Home is chosen next. */
+    private boolean switching;
+    /** Android's Home picker was opened; checked when this screen comes back. */
+    private boolean awaitingHome;
+    private boolean pickerLeft;
+    private final ArrayDeque<String> oldToRemove = new ArrayDeque<>();
+    private String removingOld;
+    private final List<String> notRemoved = new ArrayList<>();
+
+    /** The package Android opens for Home, or null when it would ask. */
+    private String currentHome() {
+        Intent home = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
+        ResolveInfo info = getPackageManager().resolveActivity(home, PackageManager.MATCH_DEFAULT_ONLY);
+        if (info == null || info.activityInfo == null) return null;
+        String pkg = info.activityInfo.packageName;
+        return "android".equals(pkg) ? null : pkg;
+    }
+
+    private Item launcherItem() {
+        for (Item item : items) if (item.entry.pkg.equals(LAUNCHER)) return item;
+        return null;
+    }
+
+    private List<String> oldInstalled() {
+        List<String> found = new ArrayList<>();
+        for (String pkg : OLD_LAUNCHERS) if (installedVersion(pkg) >= 0) found.add(pkg);
+        return found;
+    }
+
+    private String label(String pkg) {
+        try {
+            return getPackageManager().getApplicationLabel(getPackageManager().getApplicationInfo(pkg, 0)).toString();
+        } catch (PackageManager.NameNotFoundException e) {
+            return pkg;
+        }
+    }
+
+    private String labels(List<String> pkgs) {
+        List<String> names = new ArrayList<>();
+        for (String pkg : pkgs) names.add(label(pkg));
+        return String.join(getString(R.string.and), names);
+    }
+
+    /**
+     * Once each time this app opens: to switch, while StreamBox isn't Home and the file has it; or, once it is Home, to
+     * uninstall the old launchers still here. Android goes straight to the new Home after the picker, so that second
+     * question is how a switch finishes when this app was closed in the meantime.
+     */
+    private void offerSwitch() {
+        if (isFinishing()) return;
+        List<String> old = oldInstalled();
+        if (LAUNCHER.equals(currentHome())) {
+            if (old.isEmpty()) return;
+            new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                    .setTitle(R.string.cleanup_title)
+                    .setMessage(getString(R.string.cleanup_message, labels(old)))
+                    .setPositiveButton(R.string.cleanup_yes, (d, w) -> removeOld())
+                    .setNegativeButton(R.string.switch_no, null)
+                    .show();
+            return;
+        }
+        if (launcherItem() == null) return;
+        String message = getString(R.string.switch_message);
+        if (!old.isEmpty()) message += "\n\n" + getString(R.string.switch_removes, labels(old));
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle(R.string.switch_title)
+                .setMessage(message)
+                .setPositiveButton(R.string.switch_yes, (d, w) -> startSwitch())
+                .setNegativeButton(R.string.switch_no, null)
+                .show();
+    }
+
+    private void startSwitch() {
+        if (working != null) return;
+        Item launcher = launcherItem();
+        if (launcher == null) return;
+        if (Catalog.state(launcher.entry, launcher.installed) == Catalog.State.CURRENT) {
+            chooseHome();
+            return;
+        }
+        switching = true;
+        enqueue(launcher);
+        next();
+    }
+
+    /** Called when the queue empties after a switch's install. */
+    private void switchInstalled() {
+        switching = false;
+        if (installedVersion(LAUNCHER) < 0) return;   // the install failed, and said so
+        if (LAUNCHER.equals(currentHome())) removeOld();
+        else chooseHome();
+    }
+
+    /** Android's own picker: an app can't make itself or another app Home. */
+    private void chooseHome() {
+        try {
+            awaitingHome = true;
+            pickerLeft = false;
+            startActivity(new Intent(Settings.ACTION_HOME_SETTINGS));
+            int hint = oldInstalled().isEmpty() ? R.string.switch_choose : R.string.switch_choose_then;
+            Toast.makeText(this, getString(hint, label(LAUNCHER)), Toast.LENGTH_LONG).show();
+        } catch (ActivityNotFoundException | SecurityException e) {
+            awaitingHome = false;
+            say(getString(R.string.switch_no_picker));
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (awaitingHome) pickerLeft = true;
+    }
+
+    /** onResume, not onRestart: this screen is translucent, so the picker may only pause it. */
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (!awaitingHome || !pickerLeft) return;
+        awaitingHome = false;
+        if (LAUNCHER.equals(currentHome())) {
+            removeOld();
+        } else {
+            List<String> old = oldInstalled();
+            say(old.isEmpty() ? getString(R.string.switch_not_home) : getString(R.string.switch_not_home_kept, labels(old)));
+        }
+    }
+
+    private void removeOld() {
+        oldToRemove.clear();
+        notRemoved.clear();
+        oldToRemove.addAll(oldInstalled());
+        removeNextOld();
+    }
+
+    private void removeNextOld() {
+        removingOld = oldToRemove.poll();
+        if (removingOld != null) {
+            say(getString(R.string.switch_removing, label(removingOld)));
+            getPackageManager().getPackageInstaller().uninstall(removingOld, answer().getIntentSender());
+            return;
+        }
+        rebuild();
+        say(notRemoved.isEmpty() ? getString(R.string.switch_done)
+                : getString(R.string.switch_done_kept, labels(notRemoved)));
+    }
+
+    private void removedOld(boolean done) {
+        if (!done || installedVersion(removingOld) >= 0) notRemoved.add(removingOld);
+        removeNextOld();
+    }
+
+    private void say(String text) {
+        status.setVisibility(View.VISIBLE);
+        status.setText(text);
     }
 
     private int badLines;
 
+    // Apps the file lists as no longer working. A pill flips the list to those still on this box; each one is
+    // uninstalled with Android's own prompt, one at a time.
+
+    private final List<Catalog.Removal> removals = new ArrayList<>();
+    private TextView removeToggle;
+    private boolean removeMode;
+    private Catalog.Removal removingApp;
+
+    private List<Catalog.Removal> removalsHere() {
+        List<Catalog.Removal> here = new ArrayList<>();
+        for (Catalog.Removal r : removals) if (installedVersion(r.pkg) >= 0) here.add(r);
+        return here;
+    }
+
+    private void toggleRemoveMode() {
+        if (working != null || removingApp != null) return;
+        removeMode = !removeMode;
+        rebuild();
+    }
+
+    /** Shown while there is something to remove, or to get back from the removal list. */
+    private void showRemoveToggle(int here) {
+        removeToggle.setVisibility(here > 0 || removeMode ? View.VISIBLE : View.GONE);
+        removeToggle.setText(removeMode ? getString(R.string.remove_back)
+                : getResources().getQuantityString(R.plurals.remove_apps, here, here));
+    }
+
+    private void rebuildRemovals(List<Catalog.Removal> here) {
+        updateAll.setVisibility(View.GONE);
+        TextView heading = (TextView) LayoutInflater.from(this).inflate(R.layout.section, rows, false);
+        heading.setText(R.string.section_remove);
+        rows.addView(heading);
+        for (Catalog.Removal r : here) rows.addView(removalRow(r));
+        status.setVisibility(View.VISIBLE);
+        status.setText(R.string.remove_help);
+        (rows.getChildCount() > 1 ? rows.getChildAt(1) : removeToggle).requestFocus();
+    }
+
+    private View removalRow(Catalog.Removal r) {
+        View row = LayoutInflater.from(this).inflate(R.layout.row_app, rows, false);
+        ImageView icon = row.findViewById(R.id.icon);
+        try {
+            icon.setImageDrawable(getPackageManager().getApplicationIcon(r.pkg));
+        } catch (PackageManager.NameNotFoundException e) {
+            icon.setImageResource(R.drawable.ic_new_app);
+        }
+        ((TextView) row.findViewById(R.id.name)).setText(r.name);
+        String version = installedName(r.pkg);
+        ((TextView) row.findViewById(R.id.detail)).setText(r.note.isEmpty() ? version
+                : version.isEmpty() ? r.note : getString(R.string.remove_detail, version, r.note));
+        TextView action = row.findViewById(R.id.action);
+        action.setText(R.string.action_uninstall);
+        row.setOnClickListener(v -> {
+            if (working != null || removingApp != null) return;
+            removingApp = r;
+            action.setText(R.string.action_removing);
+            getPackageManager().getPackageInstaller().uninstall(r.pkg, answer().getIntentSender());
+        });
+        return row;
+    }
+
+    private void removedApp(boolean done) {
+        Catalog.Removal r = removingApp;
+        removingApp = null;
+        boolean gone = installedVersion(r.pkg) < 0;
+        if (removalsHere().isEmpty()) removeMode = false;
+        showStorage();
+        rebuild();
+        status.setVisibility(View.VISIBLE);
+        status.setText(getString(gone ? R.string.remove_done : R.string.remove_kept, r.name));
+    }
+
     private void rebuild() {
         rows.removeAllViews();
+        List<Catalog.Removal> here = removalsHere();
+        if (here.isEmpty()) removeMode = false;
+        showRemoveToggle(here.size());
+        if (removeMode) {
+            rebuildRemovals(here);
+            return;
+        }
         List<Item> updates = new ArrayList<>();
         List<Item> fresh = new ArrayList<>();
         int current = 0;
@@ -308,6 +569,7 @@ public final class UpdatesActivity extends Activity {
             } else if (left.isEmpty()) {
                 status.setVisibility(status.getText().length() == 0 ? View.GONE : View.VISIBLE);
             }
+            if (switching) switchInstalled();
             return;
         }
         if (!getPackageManager().canRequestPackageInstalls()) {

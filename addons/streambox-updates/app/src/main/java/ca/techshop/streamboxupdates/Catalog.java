@@ -10,6 +10,10 @@ import java.util.Locale;
  *   name | package | versionCode | versionName | uninstall first (0 or 1) | https address | sha256 (may be left out)
  *
  * An address that doesn't start with https:// is taken relative to the file itself.
+ *
+ * An app that no longer works, offered for removal, is a line that starts with the word remove:
+ *
+ *   remove | name | package | note (may be left out)
  */
 final class Catalog {
     static final class Entry {
@@ -32,7 +36,22 @@ final class Catalog {
         }
     }
 
+    static final class Removal {
+        final String name;
+        final String pkg;
+        final String note;
+
+        Removal(String name, String pkg, String note) {
+            this.name = name;
+            this.pkg = pkg;
+            this.note = note;
+        }
+    }
+
+    static final String SELF = "ca.techshop.streamboxupdates";
+
     final List<Entry> entries = new ArrayList<>();
+    final List<Removal> removals = new ArrayList<>();
     /** Lines that were not comments and could not be read: shown, so a typo in the file doesn't just lose an app. */
     int badLines;
 
@@ -41,6 +60,12 @@ final class Catalog {
         for (String raw : text.split("\r?\n")) {
             String line = raw.trim();
             if (line.isEmpty() || line.startsWith("#")) continue;
+            if (line.split("\\|", 2)[0].trim().equalsIgnoreCase("remove")) {
+                Removal removal = removal(line);
+                if (removal == null) catalog.badLines++;
+                else catalog.removals.add(removal);
+                continue;
+            }
             Entry entry = entry(line, fileUrl);
             if (entry == null) catalog.badLines++;
             else catalog.entries.add(entry);
@@ -62,10 +87,24 @@ final class Catalog {
             return null;
         }
         String url = address(f[5].trim(), fileUrl);
-        if (name.isEmpty() || !pkg.matches("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)+") || versionCode < 1
+        if (name.isEmpty() || !validPackage(pkg) || versionCode < 1
                 || !(flag.equals("0") || flag.equals("1")) || url == null
                 || !(sha256.isEmpty() || sha256.matches("[0-9a-f]{64}"))) return null;
         return new Entry(name, pkg, versionCode, f[3].trim(), flag.equals("1"), url, sha256);
+    }
+
+    /** Home and this app are refused: the file can't take either off the box. */
+    private static Removal removal(String line) {
+        String[] f = line.split("\\|", -1);
+        if (f.length < 3 || f.length > 4) return null;
+        String name = f[1].trim();
+        String pkg = f[2].trim();
+        if (name.isEmpty() || !validPackage(pkg) || !mayUninstall(pkg, SELF)) return null;
+        return new Removal(name, pkg, f.length == 4 ? f[3].trim() : "");
+    }
+
+    private static boolean validPackage(String pkg) {
+        return pkg.matches("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)+");
     }
 
     /** HTTPS only: what comes from here gets installed. */

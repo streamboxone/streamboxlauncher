@@ -120,9 +120,11 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:gravity="end"
+            android:gravity="center_vertical"
             android:orientation="horizontal">
 
+            <TextView android:id="@+id/removeMode" style="@style/Pill" android:layout_marginStart="0dp" android:visibility="gone" />
+            <Space android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1" />
             <TextView android:id="@+id/close" style="@style/Pill" android:text="@string/close" />
             <TextView android:id="@+id/updateAll" style="@style/Pill" android:text="@string/update_all" android:visibility="gone" />
         </LinearLayout>

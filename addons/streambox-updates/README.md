@@ -25,6 +25,20 @@ Voltra TV | com.amhkor.voltratv | 9 | 2.0 | 1 | https://streambox.online/apks/vo
 - **sha256** may be left blank. When present, a download that doesn't match is not installed.
 - Single APKs only, not split bundles.
 
+## Removing old apps
+
+A line that starts with `remove` names an app that no longer works:
+
+```
+# remove | name | package | note (may be left out)
+remove | Old TV | com.example.oldtv | stopped working
+```
+
+When one of those is on the box, a **Remove old apps** pill shows at the bottom. It switches the list to just those apps.
+Selecting one uninstalls it, after Android's own confirmation, and **Back to updates** (or Back) returns. Home and this
+app are refused, like the flag above. Updaters before 1.3 don't know these lines, and count each one as a line that
+could not be read until they update.
+
 `make-line.py` prints a line from an APK, so none of this is typed by hand:
 
 ```bash
@@ -51,12 +65,24 @@ this one, so set it during setup instead:
 adb shell appops set ca.techshop.streamboxupdates REQUEST_INSTALL_PACKAGES allow
 ```
 
+## Switching from an older launcher
+
+Each time it opens, while StreamBox Launcher (`com.gathin.tvhome`) isn't Home and the file lists it, it asks whether to
+switch. On Switch it installs or updates the launcher from the file, then opens Android's Home picker, where the person
+chooses it. Only once Android reports StreamBox as Home does it uninstall Wolf Launcher (`com.wolf.firelauncher`) and
+Projectivy Launcher (`com.spocky.projengmenu`), each with Android's own confirmation. If Home didn't change, or the box
+has no Home picker, the old launchers stay.
+
+Android goes straight to the new Home once it is picked, so the switch finishes the next time Updates opens: while
+StreamBox is Home and an old launcher is still installed, it asks whether to uninstall it. The list is `OLD_LAUNCHERS` in `UpdatesActivity.java`.
+
 ## Permissions
 
 - `INTERNET`: the file and the APKs.
-- `REQUEST_INSTALL_PACKAGES` and `REQUEST_DELETE_PACKAGES`: installing, and uninstalling first when the file says to.
+- `REQUEST_INSTALL_PACKAGES` and `REQUEST_DELETE_PACKAGES`: installing, uninstalling first when the file says to, the old
+  launchers after a switch, and the apps the file lists as old.
 - `UPDATE_PACKAGES_WITHOUT_USER_ACTION`: lets Android skip the prompt for updates of apps this one installed.
-- `QUERY_ALL_PACKAGES`: the installed version of whichever apps the file names.
+- `QUERY_ALL_PACKAGES`: the installed version of whichever apps the file names, and which app is Home.
 
 ## Worth knowing
 
