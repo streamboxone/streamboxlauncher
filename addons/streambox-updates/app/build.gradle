@@ -3,7 +3,7 @@ android {
     namespace 'ca.techshop.streamboxupdates'
     compileSdk 34
     buildFeatures { aidl false }
-    defaultConfig { applicationId 'ca.techshop.streamboxupdates'; minSdk 26; targetSdk 34; versionCode 4; versionName '1.3' }
+    defaultConfig { applicationId 'ca.techshop.streamboxupdates'; minSdk 26; targetSdk 34; versionCode 5; versionName '1.4' }
     // The StreamBox release key, kept outside the repo. Updates only install over the same key, so every box needs this one.
     def releaseKey = new File(System.getProperty('user.home'), '.streambox/signing.properties')
     signingConfigs {

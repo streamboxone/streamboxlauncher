@@ -44,8 +44,11 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.Locale;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 /**
  * Reads the text file of apps and offers what is newer here or not on the box yet. One app is handled at a time: it is
@@ -68,6 +71,8 @@ public final class UpdatesActivity extends Activity {
     private TextView updateAll;
     private Item working;
     private File download;
+    /** The APKs inside download when it is a split bundle (XAPK); empty for a plain APK. */
+    private List<String> downloadApks = new ArrayList<>();
     private boolean uninstalling;
     private int nextRequest;
 
@@ -613,13 +618,18 @@ public final class UpdatesActivity extends Activity {
         } catch (IOException | NoSuchAlgorithmException e) {
             problem = R.string.failed_download;
         }
+        List<String> apks = new ArrayList<>();
         if (problem == 0) {
-            PackageInfo info = getPackageManager().getPackageArchiveInfo(file.getPath(), 0);
-            if (info == null || !item.entry.pkg.equals(info.packageName)) problem = R.string.failed_wrong_app;
+            try {
+                problem = check(item, file, apks);
+            } catch (IOException | RuntimeException e) {
+                problem = R.string.failed_wrong_app;
+            }
         }
         int result = problem;
         main.post(() -> {
             download = file;
+            downloadApks = apks;
             if (isDestroyed()) {
                 clearDownload();
                 return;
@@ -632,6 +642,40 @@ public final class UpdatesActivity extends Activity {
                 install(item);
             }
         });
+    }
+
+    /**
+     * Returns 0 when the download is the listed app, as a plain APK or as a split bundle (XAPK), whose APKs it adds to
+     * apks. A bundle is checked by its base APK, unpacked for a moment.
+     */
+    private int check(Item item, File file, List<String> apks) throws IOException {
+        List<String> entries = new ArrayList<>();
+        try (ZipFile zip = new ZipFile(file)) {
+            for (Enumeration<? extends ZipEntry> e = zip.entries(); e.hasMoreElements(); ) entries.add(e.nextElement().getName());
+            apks.addAll(SplitBundle.apks(entries));
+            File apk = file;
+            File base = new File(getCacheDir(), "check-" + item.entry.pkg + ".apk");
+            try {
+                if (!apks.isEmpty()) {
+                    if (SplitBundle.hasObb(entries)) return R.string.failed_obb;
+                    try (InputStream in = zip.getInputStream(zip.getEntry(SplitBundle.base(apks, item.entry.pkg)));
+                         OutputStream out = new FileOutputStream(base)) {
+                        copy(in, out);
+                    }
+                    apk = base;
+                }
+                PackageInfo info = getPackageManager().getPackageArchiveInfo(apk.getPath(), 0);
+                return info != null && item.entry.pkg.equals(info.packageName) ? 0 : R.string.failed_wrong_app;
+            } finally {
+                //noinspection ResultOfMethodCallIgnored
+                base.delete();
+            }
+        }
+    }
+
+    private static void copy(InputStream in, OutputStream out) throws IOException {
+        byte[] buffer = new byte[64 * 1024];
+        for (int n; (n = in.read(buffer)) != -1; ) out.write(buffer, 0, n);
     }
 
     /** Returns 0, or the message to show. */
@@ -700,6 +744,7 @@ public final class UpdatesActivity extends Activity {
     private void install(Item item) {
         item.action.setText(R.string.action_installing);
         File file = download;
+        List<String> apks = downloadApks;
         new Thread(() -> {
             try {
                 PackageInstaller installer = getPackageManager().getPackageInstaller();
@@ -709,11 +754,24 @@ public final class UpdatesActivity extends Activity {
                 if (Build.VERSION.SDK_INT >= 31) params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED);
                 int id = installer.createSession(params);
                 try (PackageInstaller.Session session = installer.openSession(id)) {
-                    try (InputStream in = new FileInputStream(file);
-                         OutputStream out = session.openWrite("base.apk", 0, file.length())) {
-                        byte[] buffer = new byte[64 * 1024];
-                        for (int n; (n = in.read(buffer)) != -1; ) out.write(buffer, 0, n);
-                        session.fsync(out);
+                    if (apks.isEmpty()) {
+                        try (InputStream in = new FileInputStream(file);
+                             OutputStream out = session.openWrite("base.apk", 0, file.length())) {
+                            copy(in, out);
+                            session.fsync(out);
+                        }
+                    } else {
+                        // A split bundle: every APK in it goes into the one session, straight from the zip.
+                        try (ZipFile zip = new ZipFile(file)) {
+                            for (String name : apks) {
+                                ZipEntry entry = zip.getEntry(name);
+                                try (InputStream in = zip.getInputStream(entry);
+                                     OutputStream out = session.openWrite(name, 0, entry.getSize())) {
+                                    copy(in, out);
+                                    session.fsync(out);
+                                }
+                            }
+                        }
                     }
                     session.commit(answer().getIntentSender());
                 }
@@ -746,6 +804,7 @@ public final class UpdatesActivity extends Activity {
             //noinspection ResultOfMethodCallIgnored
             download.delete();
             download = null;
+            downloadApks = new ArrayList<>();
         }
     }
 

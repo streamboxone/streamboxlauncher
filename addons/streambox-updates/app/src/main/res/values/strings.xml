@@ -26,6 +26,7 @@
     <string name="failed_download">the download failed.</string>
     <string name="failed_space">there is not enough free space.</string>
     <string name="failed_checksum">the download did not match its checksum, so it was not installed.</string>
+    <string name="failed_obb">the bundle has data files (OBB) that this app cannot install, so it was not installed.</string>
     <string name="failed_wrong_app">the file is not this app, so it was not installed.</string>
     <string name="failed_protected">Home and this app can\'t be uninstalled first. Set its flag to 0.</string>
     <string name="failed_uninstall">it was not uninstalled, so the old version is still there.</string>

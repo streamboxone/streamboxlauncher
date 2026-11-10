@@ -23,7 +23,9 @@ Voltra TV | com.amhkor.voltratv | 9 | 2.0 | 1 | https://streambox.online/apks/vo
   bad download never costs the installed app. Home and this app refuse the flag.
 - **address** is HTTPS only. One without `https://` is taken as relative to the file.
 - **sha256** may be left blank. When present, a download that doesn't match is not installed.
-- Single APKs only, not split bundles.
+- **address** may point at an APK or at a split bundle (an `.xapk` from APKPure, or an `.apks`): every APK in it goes
+  into one install. A bundle is checked by its base APK, and **sha256** covers the whole file. A bundle with OBB data
+  files is refused. Updaters before 1.4 take only single APKs.
 
 ## Removing old apps
 
@@ -39,10 +41,11 @@ Selecting one uninstalls it, after Android's own confirmation, and **Back to upd
 app are refused, like the flag above. Updaters before 1.3 don't know these lines, and count each one as a line that
 could not be read until they update.
 
-`make-line.py` prints a line from an APK, so none of this is typed by hand:
+`make-line.py` prints a line from an APK or a bundle, so none of this is typed by hand:
 
 ```bash
 python make-line.py clipbox.apk
+python make-line.py sesame.xapk
 ```
 
 ## Prompts
