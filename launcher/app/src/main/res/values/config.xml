@@ -277,6 +277,9 @@
          updated install never asks), and the Settings menu (hold OK on Settings) has Reload StreamBox layout.
          Empty turns both off. -->
     <string name="first_run_layout_url" translatable="false">https://streambox.online/layout.zip</string>
+    <!-- On a fresh install, after the layout question, Home asks once to turn on the Home button helper when it is
+         off, and opens Accessibility settings. The helper adds Restart… to the Settings menu. -->
+    <bool name="first_run_helper_offer">true</bool>
 
     <!-- The name across the top of Home. Empty shows nothing. -->
     <string name="top_title" translatable="false">STREAMBOX</string>

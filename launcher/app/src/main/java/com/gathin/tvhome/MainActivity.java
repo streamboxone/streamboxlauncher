@@ -1127,6 +1127,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             return;
         }
         offerLayout();
+        offerHelper();
         checkAnnouncement();
         updateWeather();
         restartIdleClock();
@@ -2990,8 +2991,31 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 .setTitle(R.string.layout_offer_title)
                 .setMessage(R.string.layout_offer_message)
                 .setPositiveButton(R.string.layout_offer_yes, (d, which) -> loadLayout(address))
-                .setNegativeButton(R.string.layout_offer_no, null)
+                // Not now goes straight on to the helper question; Load layout gets it after the layout reloads Home.
+                .setNegativeButton(R.string.layout_offer_no, (d, which) -> handler.post(this::offerHelper))
                 .setOnDismissListener(d -> layoutOffer = null)
+                .show();
+    }
+
+    private TvDialog helperOffer;
+
+    /** first_run_helper_offer: once, on a fresh install, after the layout question. See LayoutOffer.helperDue. */
+    private void offerHelper() {
+        if (!getResources().getBoolean(R.bool.first_run_helper_offer) || helperOffer != null || layoutOffer != null
+                || announcement != null || !LayoutOffer.helperDue(this, getString(R.string.first_run_layout_url))) return;
+        LayoutOffer.helperAsked(this);
+        helperOffer = new TvDialog.Builder(this)
+                .setTitle(R.string.helper_offer_title)
+                .setMessage(R.string.helper_offer_message)
+                .setPositiveButton(R.string.helper_offer_yes, (d, which) -> {
+                    try {
+                        startActivity(new Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS));
+                    } catch (android.content.ActivityNotFoundException e) {
+                        Toast.makeText(this, R.string.helper_offer_missing, Toast.LENGTH_LONG).show();
+                    }
+                })
+                .setNegativeButton(R.string.layout_offer_no, null)
+                .setOnDismissListener(d -> helperOffer = null)
                 .show();
     }
 
@@ -3018,7 +3042,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     }
 
     private void checkAnnouncement() {
-        if (announcement == null && layoutOffer == null && resumed) {
+        if (announcement == null && layoutOffer == null && helperOffer == null && resumed) {
             Announcements.check(this, getString(R.string.announcement_url), this::showAnnouncement);
         }
     }
