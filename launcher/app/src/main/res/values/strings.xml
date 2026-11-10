@@ -177,6 +177,10 @@
     <string name="layout_offer_yes">Load layout</string>
     <string name="layout_offer_no">Not now</string>
     <string name="layout_offer_loading">Loading the layout…</string>
+    <string name="layout_reload">Reload StreamBox layout</string>
+    <string name="layout_reload_title">Reload the StreamBox layout?</string>
+    <string name="layout_reload_message">This replaces the layout, settings and added pictures on this box with the StreamBox layout. Apps are not installed or removed.</string>
+    <string name="layout_reload_go">Reload</string>
     <string name="layout_offer_failed">The layout could not be downloaded. Load it later in Launcher settings, Backup and restore, from a web address.</string>
     <string name="backup_restore_failed">That file could not be restored.</string>
     <string name="categories_label">App categories</string>

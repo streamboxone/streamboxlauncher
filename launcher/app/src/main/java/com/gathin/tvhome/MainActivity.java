@@ -2995,6 +2995,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 .show();
     }
 
+    /** Settings menu: the same layout again, after a confirmation, since it replaces what is on this box. */
+    private void confirmReloadLayout(String address) {
+        new TvDialog.Builder(this)
+                .setTitle(R.string.layout_reload_title)
+                .setMessage(R.string.layout_reload_message)
+                .setPositiveButton(R.string.layout_reload_go, (d, which) -> loadLayout(address))
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
     private void loadLayout(String address) {
         Toast.makeText(this, R.string.layout_offer_loading, Toast.LENGTH_SHORT).show();
         new Thread(() -> {
@@ -3862,6 +3872,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (moduleCards) addSettingsMenuRow(rows, popup, R.string.module_cards, this::showModuleCards);
         if (dockRow) addSettingsMenuRow(rows, popup, R.string.dock_edit, this::startDockEdit);
         addSettingsMenuRow(rows, popup, R.string.reorder, this::toggleReorder);
+        String layout = getString(R.string.first_run_layout_url);
+        if (!layout.isEmpty()) addSettingsMenuRow(rows, popup, R.string.layout_reload, () -> confirmReloadLayout(layout));
         // A launcher may not restart the TV itself; the Home key helper can open the system power menu instead.
         if (HomeKeyService.canOpenPowerMenu()) addSettingsMenuRow(rows, popup, R.string.power_menu, HomeKeyService::openPowerMenu);
         panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);

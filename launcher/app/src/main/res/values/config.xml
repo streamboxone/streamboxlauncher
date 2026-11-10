@@ -274,7 +274,8 @@
     <string name="backup_url" translatable="false">https://streambox.online/</string>
 
     <!-- A backup zip over HTTPS. On the first Home after a fresh install, Home asks once whether to load it (an
-         updated install never asks). Empty asks nothing. -->
+         updated install never asks), and the Settings menu (hold OK on Settings) has Reload StreamBox layout.
+         Empty turns both off. -->
     <string name="first_run_layout_url" translatable="false">https://streambox.online/layout.zip</string>
 
     <!-- The name across the top of Home. Empty shows nothing. -->
