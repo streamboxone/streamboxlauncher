@@ -172,6 +172,12 @@
     <string name="backup_restore_confirm">This replaces the layout, settings and added pictures on this box. Apps are not installed or removed, and any in the backup that are missing here are left out.</string>
     <string name="backup_restore_go">Restore</string>
     <string name="backup_restored">Backup restored.</string>
+    <string name="layout_offer_title">Load the StreamBox layout?</string>
+    <string name="layout_offer_message">Sets up Home with the StreamBox layout and settings: tiles, order, names and pictures. Apps are not installed or removed. You can also do this later in Launcher settings, Backup and restore.</string>
+    <string name="layout_offer_yes">Load layout</string>
+    <string name="layout_offer_no">Not now</string>
+    <string name="layout_offer_loading">Loading the layout…</string>
+    <string name="layout_offer_failed">The layout could not be downloaded. Load it later in Launcher settings, Backup and restore, from a web address.</string>
     <string name="backup_restore_failed">That file could not be restored.</string>
     <string name="categories_label">App categories</string>
     <string name="category_other">Other apps</string>

@@ -23,8 +23,9 @@ platform-tools into this folder: https://developer.android.com/tools/releases/pl
    If it stops, it says why, and running it again is safe. The usual one on a new box: the saved Wi-Fi belongs to the
    setup wizard. On the box, forget the network and join it again, then run this again. The port may change.
 
-5. On the box, restore your layout: on Home, hold OK on Settings, then Launcher settings, Backup and restore.
-   Restore from a web address, or from a file.
+5. On the box, Home asks once whether to load the StreamBox layout (https://streambox.online/layout.zip). Choose
+   Load layout. To do it later, or from another file: on Home, hold OK on Settings, then Launcher settings, Backup and
+   restore. Restore from a web address, or from a file.
 
 6. Close debugging. Turn off Wireless debugging and USB debugging, choose to forget this PC, restart the box, then:
 

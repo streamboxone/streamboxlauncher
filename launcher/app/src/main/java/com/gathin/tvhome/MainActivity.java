@@ -1126,6 +1126,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             recreate();
             return;
         }
+        offerLayout();
         checkAnnouncement();
         updateWeather();
         restartIdleClock();
@@ -2978,8 +2979,36 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         weatherPanel.setVisibility(View.VISIBLE);
     }
 
+    private TvDialog layoutOffer;
+
+    /** first_run_layout_url: once, on a fresh install's first Home. See LayoutOffer. */
+    private void offerLayout() {
+        String address = getString(R.string.first_run_layout_url);
+        if (layoutOffer != null || announcement != null || !LayoutOffer.due(this, address)) return;
+        LayoutOffer.asked(this);
+        layoutOffer = new TvDialog.Builder(this)
+                .setTitle(R.string.layout_offer_title)
+                .setMessage(R.string.layout_offer_message)
+                .setPositiveButton(R.string.layout_offer_yes, (d, which) -> loadLayout(address))
+                .setNegativeButton(R.string.layout_offer_no, null)
+                .setOnDismissListener(d -> layoutOffer = null)
+                .show();
+    }
+
+    private void loadLayout(String address) {
+        Toast.makeText(this, R.string.layout_offer_loading, Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            boolean restored = SettingsBackup.restoreFromWeb(this, address);
+            runOnUiThread(() -> {
+                if (isDestroyed()) return;
+                Toast.makeText(this, restored ? R.string.backup_restored : R.string.layout_offer_failed, Toast.LENGTH_LONG).show();
+                if (restored) recreate();
+            });
+        }, "layout-offer").start();
+    }
+
     private void checkAnnouncement() {
-        if (announcement == null && resumed) {
+        if (announcement == null && layoutOffer == null && resumed) {
             Announcements.check(this, getString(R.string.announcement_url), this::showAnnouncement);
         }
     }
