@@ -71,13 +71,22 @@ adb shell appops set ca.techshop.streamboxupdates REQUEST_INSTALL_PACKAGES allow
 ## Switching from an older launcher
 
 Each time it opens, while StreamBox Launcher (`com.gathin.tvhome`) isn't Home and the file lists it, it asks whether to
-switch. On Switch it installs or updates the launcher from the file, then opens Android's Home picker, where the person
-chooses it. Only once Android reports StreamBox as Home does it uninstall Wolf Launcher (`com.wolf.firelauncher`) and
-Projectivy Launcher (`com.spocky.projengmenu`), each with Android's own confirmation. If Home didn't change, or the box
-has no Home picker, the old launchers stay.
+switch. On Switch it installs or updates the launcher from the file. If this app may not install apps yet, it opens
+Android's Install unknown apps page first, and carries on by itself once that is turned on and Back is pressed.
 
-Android goes straight to the new Home once it is picked, so the switch finishes the next time Updates opens: while
-StreamBox is Home and an old launcher is still installed, it asks whether to uninstall it. The list is `OLD_LAUNCHERS` in `UpdatesActivity.java`.
+Launcher 3.7 and newer then ask Android to make it Home, with Android's own question (on Google TV, a short list where
+the person picks StreamBox and Set as default). Android opens the new Home straight away, and the launcher hands the
+screen back here, so Wolf Launcher (`com.wolf.firelauncher`) and Projectivy Launcher (`com.spocky.projengmenu`) are
+uninstalled at once, each with Android's own confirmation. Then Home opens and loads the StreamBox layout without
+asking, since the person chose to switch. Only once Android reports StreamBox as Home are the old launchers removed; if
+Home didn't change, they stay. An older launcher, or an Android without that question, gets Android's Home picker
+instead, and the switch finishes the next time Updates opens: while StreamBox is Home and an old launcher is still
+installed, it asks whether to uninstall it. The list is `OLD_LAUNCHERS` in `UpdatesActivity.java`.
+
+Uninstalls reach only the main user. A copy of an old launcher in a second profile stays there, unused.
+
+No app can turn on an accessibility service, so the Home button helper is still turned on in Settings, Accessibility
+(the launcher asks once and opens it), or over ADB.
 
 ## Permissions
 

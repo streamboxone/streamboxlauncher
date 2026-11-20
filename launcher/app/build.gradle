@@ -13,8 +13,8 @@ android {
         applicationId providers.gradleProperty('launcherApplicationId').getOrElse('com.gathin.tvhome')
         minSdk 26
         targetSdk 34
-        versionCode 15
-        versionName '3.6'
+        versionCode 16
+        versionName '3.7'
     }
 
     // The StreamBox release key, kept outside the repo. Updates only install over the same key, so every box needs this one.

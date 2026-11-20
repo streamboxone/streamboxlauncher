@@ -22,7 +22,7 @@
     <string name="action_percent">%1$d%%</string>
     <string name="action_removing">Removing</string>
     <string name="action_installing">Installing</string>
-    <string name="allow_installs">In the list, turn on StreamBox Updates, then press Back and try again.</string>
+    <string name="allow_installs">In the list, turn on StreamBox Updates, then press Back. The install carries on.</string>
     <string name="failed_download">the download failed.</string>
     <string name="failed_space">there is not enough free space.</string>
     <string name="failed_checksum">the download did not match its checksum, so it was not installed.</string>

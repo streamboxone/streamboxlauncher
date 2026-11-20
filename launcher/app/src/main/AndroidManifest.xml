@@ -113,6 +113,18 @@
             </intent-filter>
         </activity>
 
+        <!-- StreamBox Updates opens this to make the launcher Home with Android's one-tap question; see
+             HomeRequestActivity. -->
+        <activity
+            android:name=".HomeRequestActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="com.gathin.tvhome.action.REQUEST_HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
         <activity
             android:name=".LauncherSettingsActivity"
             android:exported="false"

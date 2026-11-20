@@ -13,6 +13,8 @@ final class LayoutOffer {
     private static final String PREFS = "layout_offer";
     private static final String ASKED = "asked";
     private static final String HELPER_ASKED = "helper_asked";
+    private static final String NO_QUESTION = "load_without_asking";
+    private static final String SWITCHING = "switch_pending";
 
     private LayoutOffer() { }
 
@@ -49,6 +51,31 @@ final class LayoutOffer {
         } catch (PackageManager.NameNotFoundException e) {
             return false;
         }
+    }
+
+    /**
+     * A switch from StreamBox Updates is under way: the person already chose StreamBox, so the layout loads without the
+     * question. Set before Android's Home question, because Android opens the new Home before the answer comes back.
+     */
+    static void switching(Context context, boolean on) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .putBoolean(NO_QUESTION, on).putBoolean(SWITCHING, on).commit();
+    }
+
+    /** True once, on the first Home during a switch: StreamBox Updates still has the old launchers to remove. */
+    static boolean takeSwitch(Context context) {
+        android.content.SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        if (!prefs.getBoolean(SWITCHING, false)) return false;
+        prefs.edit().putBoolean(SWITCHING, false).apply();
+        return true;
+    }
+
+    static void switchDone(Context context) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(SWITCHING, false).apply();
+    }
+
+    static boolean withoutAsking(Context context) {
+        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(NO_QUESTION, false);
     }
 
     static void asked(Context context) {

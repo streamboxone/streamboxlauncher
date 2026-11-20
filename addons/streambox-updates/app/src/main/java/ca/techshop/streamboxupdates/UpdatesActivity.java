@@ -70,6 +70,8 @@ public final class UpdatesActivity extends Activity {
     private TextView status;
     private TextView updateAll;
     private Item working;
+    /** What was waiting when Android's install permission page opened; carried on once it is granted. */
+    private final List<Item> awaitingPermission = new ArrayList<>();
     private File download;
     /** The APKs inside download when it is a split bundle (XAPK); empty for a plain APK. */
     private List<String> downloadApks = new ArrayList<>();
@@ -242,6 +244,11 @@ public final class UpdatesActivity extends Activity {
     /** Android's Home picker was opened; checked when this screen comes back. */
     private boolean awaitingHome;
     private boolean pickerLeft;
+    /** Switch was picked in this visit: once it finishes, Home opens so the new launcher sets itself up. */
+    private boolean switchFlow;
+    private static final int REQUEST_HOME = 7;
+    /** The launcher's one-tap Home question (HomeRequestActivity, launcher 3.7 and newer). */
+    private static final String ACTION_REQUEST_HOME = "com.gathin.tvhome.action.REQUEST_HOME";
     private final ArrayDeque<String> oldToRemove = new ArrayDeque<>();
     private String removingOld;
     private final List<String> notRemoved = new ArrayList<>();
@@ -313,6 +320,7 @@ public final class UpdatesActivity extends Activity {
         if (working != null) return;
         Item launcher = launcherItem();
         if (launcher == null) return;
+        switchFlow = true;
         if (Catalog.state(launcher.entry, launcher.installed) == Catalog.State.CURRENT) {
             chooseHome();
             return;
@@ -330,8 +338,34 @@ public final class UpdatesActivity extends Activity {
         else chooseHome();
     }
 
-    /** Android's own picker: an app can't make itself or another app Home. */
+    /**
+     * The launcher asks Android to make it Home, with Android's one-tap question, and answers here, so the old
+     * launchers go straight away. A launcher too old for that, or an Android without the question, gets the picker.
+     */
     private void chooseHome() {
+        try {
+            startActivityForResult(new Intent(ACTION_REQUEST_HOME).setPackage(LAUNCHER), REQUEST_HOME);
+        } catch (ActivityNotFoundException | SecurityException e) {
+            pickHome();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int request, int result, Intent data) {
+        super.onActivityResult(request, result, data);
+        if (request != REQUEST_HOME) return;
+        if (LAUNCHER.equals(currentHome())) {
+            removeOld();
+        } else if (result == RESULT_FIRST_USER) {
+            pickHome();
+        } else {
+            List<String> old = oldInstalled();
+            say(old.isEmpty() ? getString(R.string.switch_not_home) : getString(R.string.switch_not_home_kept, labels(old)));
+        }
+    }
+
+    /** Android's own picker: an app can't make itself or another app Home. */
+    private void pickHome() {
         try {
             awaitingHome = true;
             pickerLeft = false;
@@ -354,6 +388,14 @@ public final class UpdatesActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        if (!awaitingPermission.isEmpty() && working == null && getPackageManager().canRequestPackageInstalls()) {
+            List<Item> waiting = new ArrayList<>(awaitingPermission);
+            awaitingPermission.clear();
+            status.setText("");
+            for (Item item : waiting) enqueue(item);
+            next();
+            return;
+        }
         if (!awaitingHome || !pickerLeft) return;
         awaitingHome = false;
         if (LAUNCHER.equals(currentHome())) {
@@ -381,6 +423,12 @@ public final class UpdatesActivity extends Activity {
         rebuild();
         say(notRemoved.isEmpty() ? getString(R.string.switch_done)
                 : getString(R.string.switch_done_kept, labels(notRemoved)));
+        if (switchFlow && notRemoved.isEmpty()) {
+            switchFlow = false;
+            Toast.makeText(this, R.string.switch_done, Toast.LENGTH_LONG).show();
+            startActivity(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            finish();
+        }
     }
 
     private void removedOld(boolean done) {
@@ -579,6 +627,9 @@ public final class UpdatesActivity extends Activity {
         }
         if (!getPackageManager().canRequestPackageInstalls()) {
             // Once per box, unless granted with: adb shell appops set <this app> REQUEST_INSTALL_PACKAGES allow
+            awaitingPermission.clear();
+            awaitingPermission.add(working);
+            awaitingPermission.addAll(queue);
             queue.clear();
             working = null;
             status.setVisibility(View.VISIBLE);

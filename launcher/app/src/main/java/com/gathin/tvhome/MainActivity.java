@@ -1126,9 +1126,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             recreate();
             return;
         }
-        offerLayout();
-        offerHelper();
-        checkAnnouncement();
+        if (LayoutOffer.takeSwitch(this)) {
+            backToUpdater();
+        } else {
+            offerLayout();
+            offerHelper();
+            checkAnnouncement();
+        }
         updateWeather();
         restartIdleClock();
         promptsPaused = false;
@@ -2987,6 +2991,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         String address = getString(R.string.first_run_layout_url);
         if (layoutOffer != null || announcement != null || !LayoutOffer.due(this, address)) return;
         LayoutOffer.asked(this);
+        if (LayoutOffer.withoutAsking(this)) {
+            loadLayout(address);
+            return;
+        }
         layoutOffer = new TvDialog.Builder(this)
                 .setTitle(R.string.layout_offer_title)
                 .setMessage(R.string.layout_offer_message)
@@ -2997,11 +3005,25 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 .show();
     }
 
+    /**
+     * Mid-switch, Android opened this Home before StreamBox Updates heard the answer: bring it back to remove the old
+     * launchers. It opens Home again when it is done, and the layout loads then.
+     */
+    private void backToUpdater() {
+        try {
+            startActivity(new Intent(Intent.ACTION_MAIN)
+                    .setClassName("ca.techshop.streamboxupdates", "ca.techshop.streamboxupdates.UpdatesActivity")
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        } catch (android.content.ActivityNotFoundException | SecurityException e) {
+            offerLayout();
+        }
+    }
+
     private TvDialog helperOffer;
 
     /** first_run_helper_offer: once, on a fresh install, after the layout question. See LayoutOffer.helperDue. */
     private void offerHelper() {
-        if (!getResources().getBoolean(R.bool.first_run_helper_offer) || helperOffer != null || layoutOffer != null
+        if (!getResources().getBoolean(R.bool.first_run_helper_offer) || loadingLayout || helperOffer != null || layoutOffer != null
                 || announcement != null || !LayoutOffer.helperDue(this, getString(R.string.first_run_layout_url))) return;
         LayoutOffer.helperAsked(this);
         helperOffer = new TvDialog.Builder(this)
@@ -3029,20 +3051,29 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 .show();
     }
 
+    /** A layout is downloading: Home reloads when it is in, so the questions after it wait for that. */
+    private boolean loadingLayout;
+
     private void loadLayout(String address) {
+        loadingLayout = true;
         Toast.makeText(this, R.string.layout_offer_loading, Toast.LENGTH_SHORT).show();
         new Thread(() -> {
             boolean restored = SettingsBackup.restoreFromWeb(this, address);
             runOnUiThread(() -> {
                 if (isDestroyed()) return;
                 Toast.makeText(this, restored ? R.string.backup_restored : R.string.layout_offer_failed, Toast.LENGTH_LONG).show();
-                if (restored) recreate();
+                if (restored) {
+                    recreate();
+                } else {
+                    loadingLayout = false;
+                    offerHelper();
+                }
             });
         }, "layout-offer").start();
     }
 
     private void checkAnnouncement() {
-        if (announcement == null && layoutOffer == null && helperOffer == null && resumed) {
+        if (announcement == null && layoutOffer == null && helperOffer == null && !loadingLayout && resumed) {
             Announcements.check(this, getString(R.string.announcement_url), this::showAnnouncement);
         }
     }
