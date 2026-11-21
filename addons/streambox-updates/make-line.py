@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Print the line for updates.txt that describes an APK, so nothing is typed by hand.
 
-Usage: make-line.py <app.apk | app.xapk | app.apks> [address] [--uninstall-first]
+Usage: make-line.py <app.apk | app.xapk | app.apkm | app.apks> [address] [--uninstall-first]
 
-  A split bundle (XAPK or APKS) is read from its base APK; the sha256 is of the whole file.
+  A split bundle (XAPK, APKM or APKS) is read from its base APK; the sha256 is of the whole file.
 
   address            where the file will be on the web; default apks/<file name>, beside updates.txt
   --uninstall-first  sets the flag to 1, for an APK signed differently from the installed app
@@ -50,8 +50,10 @@ def bundle_base(path):
 
 
 def badging(apk):
+    # Not check=True: a base APK whose icon lives in a split part (APKMirror's APKM) makes aapt stop with an error after
+    # it has printed the package line, which is all that is needed here.
     return subprocess.run([aapt(), "dump", "badging", apk], capture_output=True, text=True, encoding="utf-8",
-                          errors="replace", check=True).stdout
+                          errors="replace").stdout
 
 
 def main(args):
